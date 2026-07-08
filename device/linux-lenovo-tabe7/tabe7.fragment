@@ -1,0 +1,183 @@
+# Tab E7 (MT8167) bring-up config fragment, merged onto arm64 `defconfig`.
+# Goal: console boot + eMMC rootfs + USB-gadget debug, plus the pmOS essentials.
+# Display/GPU/audio/wifi enabled in later iterations.
+
+# --- SoC ---
+CONFIG_ARCH_MEDIATEK=y
+
+# --- disable foreign-vendor GPU/DRM drivers pulled in by arm64 defconfig ---
+# None of these exist on the MT8167 (its GPU is PowerVR, no open driver), and
+# display is deferred to a later iteration anyway. Two of them actively break
+# the build: nouveau fails to link, and msm needs python3 (absent in the
+# cross-native chroot) to GENHDR its register headers. Trimming the rest also
+# cuts build time substantially. MediaTek's own DRM is left for the display bring-up.
+# CONFIG_DRM_NOUVEAU is not set
+# CONFIG_DRM_AMDGPU is not set
+# CONFIG_DRM_RADEON is not set
+# CONFIG_DRM_I915 is not set
+# CONFIG_DRM_MSM is not set
+# CONFIG_DRM_TEGRA is not set
+# CONFIG_DRM_VC4 is not set
+# CONFIG_DRM_ETNAVIV is not set
+# CONFIG_DRM_LIMA is not set
+# CONFIG_DRM_PANFROST is not set
+# CONFIG_DRM_PANTHOR is not set
+# CONFIG_DRM_MESON is not set
+# CONFIG_DRM_SUN4I is not set
+# CONFIG_DRM_ROCKCHIP is not set
+# CONFIG_DRM_EXYNOS is not set
+# CONFIG_DRM_HISI_HIBMC is not set
+# CONFIG_DRM_HISI_KIRIN is not set
+# CONFIG_DRM_VIRTIO_GPU is not set
+
+# --- SIZE: strip foreign-SoC platforms ---------------------------------------
+# arm64 defconfig enables every vendor's platform tree. We are MediaTek-only, so
+# disabling these drops huge swaths of built-in code + modules. This is what makes
+# the boot.img fit the 16 MB `boot` partition (defconfig build was ~22 MB) and
+# delivers the intended "light" kernel. Keep ARCH_MEDIATEK (set above).
+# CONFIG_ARCH_ACTIONS is not set
+# CONFIG_ARCH_SUNXI is not set
+# CONFIG_ARCH_ALPINE is not set
+# CONFIG_ARCH_APPLE is not set
+# CONFIG_ARCH_BCM is not set
+# CONFIG_ARCH_BCM2835 is not set
+# CONFIG_ARCH_BCM_IPROC is not set
+# CONFIG_ARCH_BCMBCA is not set
+# CONFIG_ARCH_BERLIN is not set
+# CONFIG_ARCH_EXYNOS is not set
+# CONFIG_ARCH_SPARX5 is not set
+# CONFIG_ARCH_K3 is not set
+# CONFIG_ARCH_LG1K is not set
+# CONFIG_ARCH_HISI is not set
+# CONFIG_ARCH_KEEMBAY is not set
+# CONFIG_ARCH_MESON is not set
+# CONFIG_ARCH_MVEBU is not set
+# CONFIG_ARCH_NXP is not set
+# CONFIG_ARCH_MXC is not set
+# CONFIG_ARCH_LAYERSCAPE is not set
+# CONFIG_ARCH_S32 is not set
+# CONFIG_ARCH_NPCM is not set
+# CONFIG_ARCH_QCOM is not set
+# CONFIG_ARCH_REALTEK is not set
+# CONFIG_ARCH_RENESAS is not set
+# CONFIG_ARCH_ROCKCHIP is not set
+# CONFIG_ARCH_SEATTLE is not set
+# CONFIG_ARCH_INTEL_SOCFPGA is not set
+# CONFIG_ARCH_STM32 is not set
+# CONFIG_ARCH_SYNQUACER is not set
+# CONFIG_ARCH_TEGRA is not set
+# CONFIG_ARCH_TESLA_FSD is not set
+# CONFIG_ARCH_SPRD is not set
+# CONFIG_ARCH_THUNDER is not set
+# CONFIG_ARCH_THUNDER2 is not set
+# CONFIG_ARCH_UNIPHIER is not set
+# CONFIG_ARCH_VEXPRESS is not set
+# CONFIG_ARCH_VISCONTI is not set
+# CONFIG_ARCH_XGENE is not set
+# CONFIG_ARCH_ZYNQMP is not set
+
+# --- SIZE: drop absent-hardware subsystems (all deferred bring-up items) ------
+# No audio, wifi, wired NIC, or camera on the bring-up target yet. These are the
+# largest remaining driver zoos (175 sound codecs, 75 NIC vendors, WLAN, media).
+# USB-gadget networking (RNDIS/ECM, our debug lifeline) lives under USB gadget and
+# does NOT depend on CONFIG_ETHERNET/WLAN, so it survives these cuts.
+# CONFIG_SND is not set
+# CONFIG_ETHERNET is not set
+# CONFIG_WLAN is not set
+# CONFIG_MEDIA_SUPPORT is not set
+# CONFIG_INFINIBAND is not set
+# CONFIG_WIRELESS is not set
+
+# --- console / UART ---
+CONFIG_SERIAL_8250=y
+CONFIG_SERIAL_8250_CONSOLE=y
+CONFIG_SERIAL_8250_MT6577=y
+CONFIG_SERIAL_OF_PLATFORM=y
+
+# --- eMMC / SD card ---
+CONFIG_MMC=y
+CONFIG_MMC_BLOCK=y
+CONFIG_MMC_MTK=y
+# FAT support: needed to mount FAT32-formatted microSD in the initramfs
+# for offline kernel-log capture (00-sdlog.sh hook writes dmesg to SD).
+CONFIG_FAT_FS=y
+CONFIG_VFAT_FS=y
+CONFIG_NLS_CODEPAGE_437=y
+CONFIG_NLS_ISO8859_1=y
+
+# --- I2C + touch + keys + accel ---
+CONFIG_I2C=y
+CONFIG_I2C_MT65XX=y
+CONFIG_INPUT_TOUCHSCREEN=y
+CONFIG_TOUCHSCREEN_GOODIX=y
+CONFIG_KEYBOARD_GPIO=y
+CONFIG_IIO=y
+CONFIG_KXCJK1013=m
+
+# --- pinctrl / gpio / regulators / PMIC ---
+CONFIG_PINCTRL_MT8167=y
+CONFIG_COMMON_CLK_MT8167=y
+CONFIG_REGULATOR=y
+CONFIG_REGULATOR_FIXED_VOLTAGE=y
+# MT6392 PMIC (via pwrap SPI): regulators, keys, pinctrl, RTC
+CONFIG_MFD_MT6397=y
+CONFIG_REGULATOR_MT6397=y
+CONFIG_KEYBOARD_PMIC_MT6397=y
+CONFIG_RTC_DRV_MT6397=y
+CONFIG_MTK_PMIC_WRAP=y
+
+# --- watchdog: the LK (Android bootloader) arms the hardware WDT before handing
+# off to the kernel. The Kconfig symbol is MEDIATEK_WATCHDOG (not MTK_WATCHDOG);
+# it auto-enables via `default ARCH_MEDIATEK` but is listed here explicitly.
+# The 0001-mtk-wdt-early-disable-mt8167.patch adds an early_initcall to disable
+# the WDT at ~100ms kernel time, before the deferred-probe chain resolves, so
+# the driver has time to probe and re-enable it properly.
+CONFIG_MEDIATEK_WATCHDOG=y
+
+# --- USB gadget: the on-device debug lifeline (RNDIS + telnet) until display works ---
+# MT8167 uses the MUSB (old-style) USB controller, NOT MTU3 (newer MT SoCs).
+# MUSB_HDRC + MUSB_MEDIATEK = the UDC; configfs ECM/RNDIS = the gadget function.
+# The DTS enables usb0 (OTG port) and usb_phy (t-phy) — both were status=disabled
+# in upstream mt8516.dtsi.
+CONFIG_USB=y
+CONFIG_USB_GADGET=y
+CONFIG_USB_MUSB_HDRC=y
+# Force pure gadget/peripheral mode: DUAL_ROLE requires extcon/role-switch which
+# the MT8167 DTS doesn't provide, causing MUSB to stall at -EPROBE_DEFER forever.
+# Switch to GADGET-only so MUSB probes unconditionally and g_serial/RNDIS work.
+CONFIG_USB_MUSB_GADGET=y
+# CONFIG_USB_MUSB_DUAL_ROLE is not set
+CONFIG_USB_MUSB_MEDIATEK=y
+CONFIG_USB_CONFIGFS=y
+CONFIG_USB_CONFIGFS_RNDIS=y
+CONFIG_USB_CONFIGFS_ECM=y
+CONFIG_USB_CONFIGFS_NCM=y
+CONFIG_USB_CONFIGFS_MASS_STORAGE=y
+# --- DIAGNOSTIC: USB serial gadget (g_serial) for MUSB probe confirmation ---
+# USB_G_SERIAL=y auto-binds to the MUSB UDC before the initramfs runs, so a
+# CDC ACM device appears on the host PC the moment MUSB probes — even before
+# the initramfs configfs gadget setup. If the CDC ACM appears, MUSB is working.
+# USB_SERIAL_CONSOLE=y + console=ttyGS0 pipes kernel+initramfs output to it.
+# Remove both once MUSB is confirmed and configfs RNDIS/NCM is the target.
+CONFIG_USB_G_SERIAL=y
+CONFIG_USB_SERIAL_CONSOLE=y
+
+# --- pstore / ramoops: panic log survives reboot, readable at /sys/fs/pstore/ ---
+# The DTS reserves 0x44410000..0x444effff for ramoops. After a kernel panic the
+# next boot (Android or our kernel) can cat /sys/fs/pstore/console-ramoops to get
+# the full backtrace — eliminating the need for UART during bring-up.
+CONFIG_PSTORE=y
+CONFIG_PSTORE_CONSOLE=y
+CONFIG_PSTORE_RAM=y
+
+# --- filesystems / pmOS essentials ---
+CONFIG_EXT4_FS=y
+CONFIG_DEVTMPFS=y
+CONFIG_DEVTMPFS_MOUNT=y
+CONFIG_CGROUPS=y
+CONFIG_SQUASHFS=y
+CONFIG_SQUASHFS_XZ=y
+CONFIG_TMPFS=y
+CONFIG_BLK_DEV_INITRD=y
+CONFIG_VT=y
+CONFIG_FRAMEBUFFER_CONSOLE=y

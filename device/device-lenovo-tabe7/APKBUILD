@@ -1,0 +1,40 @@
+# Reference: <https://postmarketos.org/devicepkg>
+pkgname=device-lenovo-tabe7
+pkgdesc="Lenovo Tab E7 (TB-7104F)"
+pkgver=0.1
+pkgrel=7
+url="https://postmarketos.org"
+license="MIT"
+arch="aarch64"
+options="!check !archcheck"
+depends="
+	linux-lenovo-tabe7
+	mkbootimg
+	mtk-mkimage
+	postmarketos-base
+"
+makedepends="devicepkg-dev"
+source="deviceinfo
+	00-sdlog.sh"
+subpackages="$pkgname-nonfree-firmware:nonfree_firmware"
+
+build() {
+	devicepkg_build $startdir $pkgname
+}
+
+package() {
+	devicepkg_package $startdir $pkgname
+	install -Dm755 "$srcdir"/00-sdlog.sh \
+		"$pkgdir"/usr/share/mkinitfs/hooks/00-lenovo-tabe7-sdlog.sh
+}
+
+nonfree_firmware() {
+	pkgdesc="WiFi/BT firmware (added later from downstream nvram)"
+	depends=""
+	mkdir -p "$subpkgdir"
+}
+
+sha512sums="
+c54bd19102050d945b0a7950f2b32f79db857d594676846146d94935a702b47d5f04348a07bc0c96e27e863f9d8c55c5ab4e2dcc97bc2b4be2f9d67ad4ba53e1  deviceinfo
+9393abb71fc9fe9d268ebeccef1d1de62a3950b2bcfd92b9721843b4addf62b5e7822713798b412c47d03b6fb941e14388733fcee1a8124d96e4ba70d0d76ca6  00-sdlog.sh
+"

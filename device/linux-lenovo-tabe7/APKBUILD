@@ -1,0 +1,79 @@
+# Maintainer: r4nd3l <r4nd3l@users.noreply.github.com>
+# Kernel for the Lenovo Tab E7 (TB-7104F) — MediaTek MT8167 + MT6392 PMIC.
+# Based on Luca Scorcia's x04g-7.2-rc1 branch which has working MT6392 PMIC,
+# eMMC, SD, USB, and display support for MT8167 devices.
+pkgname=linux-lenovo-tabe7
+pkgver=7.2_rc1
+pkgrel=1
+pkgdesc="Mainline kernel for Lenovo Tab E7 (TB-7104F, MT8167)"
+arch="aarch64"
+_carch="arm64"
+url="https://github.com/lscorcia/linux"
+license="GPL-2.0-only"
+options="!strip !check !tracedeps pmb:cross-native"
+makedepends="
+	bash
+	bison
+	findutils
+	flex
+	openssl-dev
+	perl
+	gmp-dev
+	mpc1-dev
+	mpfr-dev
+	xz
+	postmarketos-installkernel
+"
+
+_commit="x04g-7.2-rc1"
+source="
+	linux-$pkgver.tar.gz::https://github.com/lscorcia/linux/archive/refs/heads/$_commit.tar.gz
+	mt8167-lenovo-tabe7.dts
+	tabe7.fragment
+	0001-mtk-wdt-early-disable-mt8167.patch
+"
+builddir="$srcdir/linux-$_commit"
+
+prepare() {
+	default_prepare
+
+	# inject our board DTS into the kernel tree + build target
+	cp "$srcdir/mt8167-lenovo-tabe7.dts" \
+		"$builddir/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tabe7.dts"
+	if ! grep -q mt8167-lenovo-tabe7 "$builddir/arch/arm64/boot/dts/mediatek/Makefile"; then
+		echo 'dtb-$(CONFIG_ARCH_MEDIATEK) += mt8167-lenovo-tabe7.dtb' \
+			>> "$builddir/arch/arm64/boot/dts/mediatek/Makefile"
+	fi
+	# config: arm64 defconfig + our bring-up fragment
+	cd "$builddir"
+	make ARCH="$_carch" defconfig
+	ARCH="$_carch" scripts/kconfig/merge_config.sh -m .config "$srcdir/tabe7.fragment"
+	make ARCH="$_carch" olddefconfig
+}
+
+build() {
+	cd "$builddir"
+	unset LDFLAGS
+	make ARCH="$_carch" KBUILD_BUILD_VERSION="$((pkgrel + 1))-$pkgname"
+}
+
+package() {
+	mkdir -p "$pkgdir"/boot
+	make -C "$builddir" \
+		ARCH="$_carch" \
+		INSTALL_PATH="$pkgdir"/boot \
+		INSTALL_MOD_PATH="$pkgdir" \
+		INSTALL_MOD_STRIP=1 \
+		INSTALL_DTBS_PATH="$pkgdir"/boot/dtbs \
+		zinstall modules_install dtbs_install
+	rm -f "$pkgdir"/lib/modules/*/build "$pkgdir"/lib/modules/*/source
+	install -D "$builddir"/include/config/kernel.release \
+		"$pkgdir"/usr/share/kernel/$pkgname/kernel.release
+}
+
+sha512sums="
+b55bd06b4fcdd35fe131948190250f7021db41027134a4411963097afc0c2a14d6f00bd766b7943eca133dc9e0dfadaf3e90beee0684c042be1a7b0bd1b44559  linux-7.2_rc1.tar.gz
+ee6e8ab7b9504a2e1b9e638dfef365e33c788a56f13132eb85e29c3c24124c74335796ec56cefb8ee6ad56f278d8baf1a5bee6b081019a214c22b28a128486af  mt8167-lenovo-tabe7.dts
+dee3100fbaff7c7e1c7a267af47ede033f8716da75207cd22264903c55c1bf2c4540e73c36a301b5a95576ca2b00a9655ebc1a9340947b3a34217ea96a0181f8  tabe7.fragment
+cfd526c3694de795640549063fd9841e2fb2fc4e8aa6f281da16819e7baae255a89ae25f7c62939bef5a67c19b730eb7545c3a5e2e05d0ef63f0559479a4526e  0001-mtk-wdt-early-disable-mt8167.patch
+"

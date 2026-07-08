@@ -1,0 +1,414 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Lenovo Tab E7 (TB-7104F) — MediaTek MT8167D, MT6392 PMIC
+ * Based on mt8167-xiaomi-x04g.dts from Luca Scorcia's x04g-7.2-rc1 branch.
+ * Adapted for TB-7104F: 1GB RAM, Goodix GT911 touch, gpio volume keys,
+ * DSI+EK79007 display (commented out pending driver), kd070d5450nha6 panel.
+ */
+/dts-v1/;
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/input/linux-event-codes.h>
+#include "mt8167.dtsi"
+#include "mt6392.dtsi"
+
+/ {
+	model = "Lenovo Tab E7 (TB-7104F)";
+	chassis-type = "tablet";
+	compatible = "lenovo,tb-7104f", "mediatek,mt8167";
+
+	aliases {
+		serial0 = &uart0;
+		mmc0 = &mmc0;
+		mmc1 = &mmc1;
+	};
+
+	chosen {
+		stdout-path = "serial0:921600n8";
+	};
+
+	memory@40000000 {
+		device_type = "memory";
+		reg = <0 0x40000000 0 0x40000000>; /* 1 GB */
+	};
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		/* ARM Trusted Firmware region — must not be touched by kernel */
+		atf-reserved-memory@54600000 {
+			reg = <0x00 0x54600000 0x00 0x30000>;
+			no-map;
+		};
+
+		/* pstore/ramoops: panic log survives reboot, readable via BROM peek */
+		ramoops@44400000 {
+			compatible = "ramoops";
+			reg = <0x0 0x44400000 0x0 0x100000>;
+			no-map;
+			record-size = <0x20000>;
+			console-size = <0x80000>;
+			ftrace-size = <0x0>;
+			pmsg-size = <0x20000>;
+		};
+	};
+
+	/* OP-TEE Trusted Execution Environment — present in Android firmware */
+	firmware {
+		optee {
+			compatible = "linaro,optee-tz";
+			method = "smc";
+		};
+	};
+
+	/*
+	 * Volume keys via GPIO (downstream: GPIO42=up, GPIO43=down).
+	 * The x04g uses the MT8167 keypad matrix instead; TB-7104F uses plain GPIOs.
+	 */
+	gpio-keys {
+		compatible = "gpio-keys";
+		key-volume-up {
+			gpios = <&pio 42 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_VOLUMEUP>;
+			label = "volume_up";
+			debounce-interval = <15>;
+		};
+		key-volume-down {
+			gpios = <&pio 43 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_VOLUMEDOWN>;
+			label = "volume_down";
+			debounce-interval = <15>;
+		};
+	};
+
+	/*
+	 * USB VBUS regulator (fixed 5V, enable GPIO TBD from downstream source).
+	 * Kept as always-on for bring-up.
+	 */
+	usb_vbus: regulator-usb-vbus {
+		compatible = "regulator-fixed";
+		regulator-name = "usb-vbus";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		regulator-always-on;
+	};
+
+	/* Battery rail — input supply for all MT6392 regulators */
+	vbat: regulator-vbat-sys {
+		compatible = "regulator-fixed";
+		regulator-name = "vbat";
+		regulator-always-on;
+		regulator-boot-on;
+	};
+};
+
+/* ---- PMIC ---- */
+&pmic {
+	interrupt-parent = <&pio>;
+	interrupts = <28 IRQ_TYPE_LEVEL_HIGH>;
+};
+
+/* Input supplies for MT6392 regulator parent nodes */
+&mt6392regulators {
+	vproc-supply = <&vbat>;
+	vcore-supply = <&vbat>;
+	vsys-supply = <&vbat>;
+	ldo1-supply = <&vbat>;
+	ldo2-supply = <&vbat>;
+	ldo3-supply = <&vbat>;
+};
+
+/* ---- MT6392 regulator constraints (matching x04g/cd24502f) ---- */
+&mt6392_vcore_reg {
+	regulator-min-microvolt = <700000>;
+	regulator-max-microvolt = <1350000>;
+	regulator-always-on;
+	regulator-boot-on;
+};
+
+&mt6392_vproc_reg {
+	regulator-min-microvolt = <700000>;
+	regulator-max-microvolt = <1350000>;
+	regulator-always-on;
+	regulator-boot-on;
+};
+
+&mt6392_vsys_reg {
+	regulator-always-on;
+	regulator-boot-on;
+};
+
+&mt6392_vaud28_reg {
+	regulator-always-on;
+	regulator-boot-on;
+};
+
+&mt6392_vxo22_reg {
+	regulator-always-on;
+	regulator-boot-on;
+};
+
+&mt6392_vaud22_reg {
+	regulator-always-on;
+	regulator-boot-on;
+};
+
+&mt6392_vadc18_reg {
+	regulator-always-on;
+	regulator-boot-on;
+};
+
+&mt6392_vio28_reg {
+	regulator-always-on;
+	regulator-boot-on;
+};
+
+&mt6392_vusb_reg {
+	regulator-always-on;
+	regulator-boot-on;
+};
+
+&mt6392_vmc_reg {
+	regulator-boot-on;
+};
+
+&mt6392_vmch_reg {
+	regulator-boot-on;
+};
+
+&mt6392_vemc3v3_reg {
+	regulator-boot-on;
+};
+
+&mt6392_vm25_reg {
+	regulator-always-on;
+	regulator-boot-on;
+};
+
+&mt6392_vdig18_reg {
+	regulator-always-on;
+	regulator-boot-on;
+};
+
+&mt6392_vm_reg {
+	regulator-always-on;
+	regulator-boot-on;
+};
+
+&mt6392_vio18_reg {
+	regulator-always-on;
+	regulator-boot-on;
+};
+
+&mt6392_vrtc_reg {
+	regulator-always-on;
+	regulator-boot-on;
+};
+
+/* ---- CPU: idle broken with Android firmware; proc-supply for cpufreq ---- */
+&cpu0 {
+	/delete-property/ cpu-idle-states;
+	proc-supply = <&mt6392_vproc_reg>;
+};
+
+&cpu1 {
+	/delete-property/ cpu-idle-states;
+	proc-supply = <&mt6392_vproc_reg>;
+};
+
+&cpu2 {
+	/delete-property/ cpu-idle-states;
+	proc-supply = <&mt6392_vproc_reg>;
+};
+
+&cpu3 {
+	/delete-property/ cpu-idle-states;
+	proc-supply = <&mt6392_vproc_reg>;
+};
+
+/* ---- UART console ---- */
+&pio {
+	uart0_pins_default: uart0-pins-default {
+		pins-rx {
+			pinmux = <MT8167_PIN_62_URXD0__FUNC_URXD0>;
+			input-enable;
+			bias-pull-up;
+		};
+		pins-tx {
+			pinmux = <MT8167_PIN_63_UTXD0__FUNC_UTXD0>;
+		};
+	};
+};
+
+&uart0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart0_pins_default>;
+	status = "okay";
+};
+
+/* ---- eMMC (mmc0) ---- */
+&pio {
+	mmc0_pins_default: mmc0-default {
+		pins_cmd_dat {
+			pinmux = <MT8167_PIN_120_MSDC0_DAT0__FUNC_MSDC0_DAT0>,
+				 <MT8167_PIN_119_MSDC0_DAT1__FUNC_MSDC0_DAT1>,
+				 <MT8167_PIN_118_MSDC0_DAT2__FUNC_MSDC0_DAT2>,
+				 <MT8167_PIN_117_MSDC0_DAT3__FUNC_MSDC0_DAT3>,
+				 <MT8167_PIN_113_MSDC0_DAT4__FUNC_MSDC0_DAT4>,
+				 <MT8167_PIN_112_MSDC0_DAT5__FUNC_MSDC0_DAT5>,
+				 <MT8167_PIN_111_MSDC0_DAT6__FUNC_MSDC0_DAT6>,
+				 <MT8167_PIN_110_MSDC0_DAT7__FUNC_MSDC0_DAT7>,
+				 <MT8167_PIN_115_MSDC0_CMD__FUNC_MSDC0_CMD>;
+			input-enable;
+			bias-pull-up = <MTK_PUPD_SET_R1R0_01>;
+		};
+		pins_clk {
+			pinmux = <MT8167_PIN_116_MSDC0_CLK__FUNC_MSDC0_CLK>;
+			bias-pull-down = <MTK_PUPD_SET_R1R0_10>;
+		};
+		pins_rst {
+			pinmux = <MT8167_PIN_114_MSDC0_RSTB__FUNC_MSDC0_RSTB>;
+			bias-pull-up = <MTK_PUPD_SET_R1R0_01>;
+		};
+	};
+
+	mmc0_pins_uhs: mmc0-uhs {
+		pins_cmd_dat {
+			pinmux = <MT8167_PIN_120_MSDC0_DAT0__FUNC_MSDC0_DAT0>,
+				 <MT8167_PIN_119_MSDC0_DAT1__FUNC_MSDC0_DAT1>,
+				 <MT8167_PIN_118_MSDC0_DAT2__FUNC_MSDC0_DAT2>,
+				 <MT8167_PIN_117_MSDC0_DAT3__FUNC_MSDC0_DAT3>,
+				 <MT8167_PIN_113_MSDC0_DAT4__FUNC_MSDC0_DAT4>,
+				 <MT8167_PIN_112_MSDC0_DAT5__FUNC_MSDC0_DAT5>,
+				 <MT8167_PIN_111_MSDC0_DAT6__FUNC_MSDC0_DAT6>,
+				 <MT8167_PIN_110_MSDC0_DAT7__FUNC_MSDC0_DAT7>,
+				 <MT8167_PIN_115_MSDC0_CMD__FUNC_MSDC0_CMD>;
+			input-enable;
+			drive-strength = <MTK_DRIVE_6mA>;
+			bias-pull-up = <MTK_PUPD_SET_R1R0_01>;
+		};
+		pins_clk {
+			pinmux = <MT8167_PIN_116_MSDC0_CLK__FUNC_MSDC0_CLK>;
+			drive-strength = <MTK_DRIVE_8mA>;
+			bias-pull-down = <MTK_PUPD_SET_R1R0_10>;
+		};
+		pins_rst {
+			pinmux = <MT8167_PIN_114_MSDC0_RSTB__FUNC_MSDC0_RSTB>;
+			bias-pull-up = <MTK_PUPD_SET_R1R0_01>;
+		};
+	};
+};
+
+&mmc0 {
+	status = "okay";
+	bus-width = <8>;
+	max-frequency = <200000000>;
+	cap-mmc-highspeed;
+	mmc-hs200-1_8v;
+	cap-mmc-hw-reset;
+	non-removable;
+	vmmc-supply = <&mt6392_vemc3v3_reg>;
+	vqmmc-supply = <&mt6392_vio18_reg>;
+	pinctrl-names = "default", "state_uhs";
+	pinctrl-0 = <&mmc0_pins_default>;
+	pinctrl-1 = <&mmc0_pins_uhs>;
+};
+
+/* ---- microSD (mmc1) ---- */
+&pio {
+	mmc1_pins_default: mmc1-default {
+		pins_cmd_dat {
+			pinmux = <MT8167_PIN_106_MSDC1_DAT0__FUNC_MSDC1_DAT0>,
+				 <MT8167_PIN_107_MSDC1_DAT1__FUNC_MSDC1_DAT1>,
+				 <MT8167_PIN_108_MSDC1_DAT2__FUNC_MSDC1_DAT2>,
+				 <MT8167_PIN_109_MSDC1_DAT3__FUNC_MSDC1_DAT3>,
+				 <MT8167_PIN_104_MSDC1_CMD__FUNC_MSDC1_CMD>;
+			input-enable;
+			drive-strength = <MTK_DRIVE_6mA>;
+			bias-pull-up = <MTK_PUPD_SET_R1R0_01>;
+		};
+		pins_clk {
+			pinmux = <MT8167_PIN_105_MSDC1_CLK__FUNC_MSDC1_CLK>;
+			drive-strength = <MTK_DRIVE_6mA>;
+			bias-pull-down = <MTK_PUPD_SET_R1R0_10>;
+		};
+		pins_insert {
+			pinmux = <MT8167_PIN_20_EINT20__FUNC_GPIO20>;
+			bias-pull-up;
+		};
+	};
+
+	mmc1_pins_uhs: mmc1-uhs {
+		pins_cmd_dat {
+			pinmux = <MT8167_PIN_106_MSDC1_DAT0__FUNC_MSDC1_DAT0>,
+				 <MT8167_PIN_107_MSDC1_DAT1__FUNC_MSDC1_DAT1>,
+				 <MT8167_PIN_108_MSDC1_DAT2__FUNC_MSDC1_DAT2>,
+				 <MT8167_PIN_109_MSDC1_DAT3__FUNC_MSDC1_DAT3>,
+				 <MT8167_PIN_104_MSDC1_CMD__FUNC_MSDC1_CMD>;
+			input-enable;
+			drive-strength = <MTK_DRIVE_6mA>;
+			bias-pull-up = <MTK_PUPD_SET_R1R0_01>;
+		};
+		pins_clk {
+			pinmux = <MT8167_PIN_105_MSDC1_CLK__FUNC_MSDC1_CLK>;
+			drive-strength = <MTK_DRIVE_8mA>;
+			bias-pull-down = <MTK_PUPD_SET_R1R0_10>;
+		};
+	};
+};
+
+&mmc1 {
+	status = "okay";
+	bus-width = <4>;
+	max-frequency = <200000000>;
+	cap-sd-highspeed;
+	sd-uhs-sdr50;
+	sd-uhs-sdr104;
+	vmmc-supply = <&mt6392_vmch_reg>;
+	vqmmc-supply = <&mt6392_vmc_reg>;
+	cd-gpios = <&pio 20 GPIO_ACTIVE_LOW>;
+	disable-wp;
+	no-mmc;
+	no-sdio;
+	pinctrl-names = "default", "state_uhs";
+	pinctrl-0 = <&mmc1_pins_default>;
+	pinctrl-1 = <&mmc1_pins_uhs>;
+};
+
+/* ---- USB gadget (peripheral-only, no role-switch) ---- */
+&usb0 {
+	status = "okay";
+	dr_mode = "peripheral";
+};
+
+&usb_phy {
+	status = "okay";
+};
+
+/* ---- Touchscreen: Goodix GT911 on i2c0 ---- */
+&i2c0 {
+	status = "okay";
+	clock-frequency = <400000>;
+
+	touchscreen@5d {
+		compatible = "goodix,gt911";
+		reg = <0x5d>;
+		interrupt-parent = <&pio>;
+		interrupts = <100 IRQ_TYPE_EDGE_FALLING>;
+		irq-gpios = <&pio 100 GPIO_ACTIVE_HIGH>;
+		reset-gpios = <&pio 101 GPIO_ACTIVE_HIGH>;
+		AVDD28-supply = <&mt6392_vgp1_reg>;
+		VDDIO-supply = <&mt6392_vio18_reg>;
+	};
+};
+
+/*
+ * TODO (later milestones):
+ *  - Display: dpi0 -> kd070d5450nha6 panel (RGB666 DPI, 1024x600@51MHz)
+ *    (gpio_lcd_pwr=GPIO50, gpio_lcd_rst=GPIO70, supply mt6392_vgp2)
+ *    Use panel-simple with kd070d5450nha6 timings, or simple-framebuffer if LK left it up.
+ *  - Audio: MT8167 AFE + MT6392 speaker amp
+ *  - WiFi/BT: consys (MediaTek proprietary, hard)
+ *  - Accelerometer: i2c1 (KXTJ2-1009 @0x0e or BMA253 @0x18)
+ */

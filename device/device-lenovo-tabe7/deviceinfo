@@ -1,0 +1,52 @@
+# Reference: <https://postmarketos.org/deviceinfo>
+# Please use double quotes only. You can source this file in shell scripts.
+
+deviceinfo_format_version="0"
+deviceinfo_name="Lenovo Tab E7"
+deviceinfo_manufacturer="Lenovo"
+deviceinfo_codename="lenovo-tabe7"
+deviceinfo_year="2018"
+deviceinfo_arch="aarch64"
+deviceinfo_dtb="mediatek/mt8167-lenovo-tabe7"
+
+# Device related
+deviceinfo_chassis="tablet"
+deviceinfo_keyboard="false"
+deviceinfo_external_storage="true"
+deviceinfo_screen_width="1024"
+deviceinfo_screen_height="600"
+deviceinfo_gpu_accelerated="false"
+# on-device debug shell over USB while display isn't up yet
+deviceinfo_getty="ttyS0;921600"
+
+# Dense initramfs compression so the boot.img fits the 16 MB boot partition
+# (default gzip left it ~8.4 MB; lzma roughly halves that). Kernel has RD_LZMA=y.
+deviceinfo_initfs_compression="lzma:best"
+
+# Split the initramfs: boot.img gets only the minimal archive, while the heavy
+# fs-tools / FDE / modules go to initramfs-extra on the /boot filesystem and are
+# loaded at runtime. This is the intended fix for our 16 MB `boot` partition
+# (merged-everything initramfs made boot.img ~17 MB; split drops it to ~12 MB).
+deviceinfo_create_initfs_extra="true"
+
+# Bootloader related (MediaTek MT8167, Android boot.img via fastboot)
+deviceinfo_flash_method="fastboot"
+deviceinfo_kernel_cmdline="console=tty0 console=ttyS0,921600 console=ttyGS0 bootopt=64S3,32N2,32N2"
+deviceinfo_generate_bootimg="true"
+deviceinfo_bootimg_dtb_second="true"
+deviceinfo_bootimg_mtk_label_kernel="KERNEL"
+deviceinfo_bootimg_mtk_label_ramdisk="ROOTFS"
+# NOTE: MediaTek 64-bit bootloaders require base+0x78000, with that same 0x78000
+# subtracted back out of every other offset. Confirmed against a sibling MT8167
+# Lenovo Tab E7 variant (TB-7304F) — using the naive 0x40000000/0x14000000-style
+# offsets boots but places the DTB at the wrong physical address, so the kernel
+# never finds it (symptom: kernel appears to hang/reset every ~2.7s in BROM,
+# because it never gets far enough to do anything else).
+deviceinfo_flash_offset_base="0x40078000"
+deviceinfo_flash_offset_dtb="0x13f88000"
+deviceinfo_flash_offset_kernel="0x00008000"
+deviceinfo_flash_offset_ramdisk="0x14f88000"
+deviceinfo_flash_offset_second="0x00e88000"
+deviceinfo_flash_offset_tags="0x13f88000"
+deviceinfo_flash_pagesize="2048"
+deviceinfo_flash_fastboot_partition_kernel="boot"
