@@ -1,0 +1,38 @@
+--- a/drivers/input/touchscreen/goodix_fwupload.c
++++ b/drivers/input/touchscreen/goodix_fwupload.c
+@@ -9,6 +9,7 @@
+  * Author: andrew@goodix.com
+  */
+ 
++#include <linux/delay.h>
+ #include <linux/device.h>
+ #include <linux/firmware.h>
+ #include <linux/i2c.h>
+@@ -155,7 +156,7 @@
+ 
+ static int goodix_start_firmware(struct i2c_client *client)
+ {
+-	int error;
++	int error, retry;
+ 	u8 val;
+ 
+ 	/* Init software watchdog */
+@@ -168,7 +169,17 @@
+ 	if (error)
+ 		return error;
+ 
+-	error = goodix_i2c_read(client, GOODIX_REG_SW_WDT, &val, 1);
++	/*
++	 * Give the firmware time to boot before touching the bus again. The
++	 * vendor driver holds INT low for 20 ms here (gtp_int_sync); the GT912F
++	 * on the Lenovo TB-7104F NACKs the status read if it comes sooner.
++	 */
++	for (retry = 0; retry < 10; retry++) {
++		msleep(20);
++		error = goodix_i2c_read(client, GOODIX_REG_SW_WDT, &val, 1);
++		if (!error)
++			break;
++	}
+ 	if (error)
+ 		return error;
+ 

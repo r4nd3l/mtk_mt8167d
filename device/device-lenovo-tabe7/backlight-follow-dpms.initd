@@ -1,0 +1,5 @@
+#!/sbin/openrc-run
+description="Switch the backlight off while the compositor has the screen blanked"
+command=/usr/libexec/backlight-follow-dpms
+command_background=true
+pidfile=/run/backlight-follow-dpms.pid

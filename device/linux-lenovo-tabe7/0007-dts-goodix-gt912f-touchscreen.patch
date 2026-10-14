@@ -1,0 +1,54 @@
+--- a/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
++++ b/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
+@@ -221,7 +221,35 @@
+ 	pinctrl-0 = <&i2c_pins_0>;
+ 	clock-div = <2>;
+ 
+-	// TODO: touch gsl3670 @ 0x40
++	/*
++	 * Goodix GT912, flashless ("GT9xxF") variant: the host uploads the
++	 * firmware at every power-up and then sends the panel config. Stock
++	 * Android registers it as mtk-tpd Product=9120 Version=104b, which is
++	 * exactly the vendor firmware header (pid "912", vid 0x104b). The vendor
++	 * DTS also carries an unused GSL3670 node at 0x40; on this board only
++	 * 0x5d answers. INT GPIO100 (falling edge), RST GPIO101, AVDD VGP1 2.8 V,
++	 * VDDIO VIO18. The vendor driver selects config group 0 (XY panel) for
++	 * lcd_id=0, which is what the .cfg file holds.
++	 */
++	touchscreen@5d {
++		compatible = "goodix,gt912";
++		reg = <0x5d>;
++		pinctrl-names = "default";
++		pinctrl-0 = <&ctp_pins>;
++		interrupt-parent = <&pio>;
++		interrupts = <100 IRQ_TYPE_EDGE_FALLING>;
++		irq-gpios = <&pio 100 GPIO_ACTIVE_HIGH>;
++		reset-gpios = <&pio 101 GPIO_ACTIVE_HIGH>;
++		AVDD28-supply = <&mt6392_vgp1_reg>;
++		VDDIO-supply = <&mt6392_vio18_reg>;
++		firmware-name = "gt912f-lenovo-tb7104f.fw";
++		goodix,config-name = "gt912f-lenovo-tb7104f.cfg";
++		touchscreen-size-x = <1024>;
++		touchscreen-size-y = <600>;
++		/* corner test 10-10: top-left reports (993,586), bottom-right (43,17) */
++		touchscreen-inverted-x;
++		touchscreen-inverted-y;
++	};
+ };
+ 
+ &i2c1 {
+@@ -282,6 +310,14 @@
+ };
+ 
+ &pio {
++	ctp_pins: ctp-pins {
++		pins {
++			pinmux = <MT8167_PIN_100_CMDAT0__FUNC_GPIO100>,
++				 <MT8167_PIN_101_CMDAT1__FUNC_GPIO101>;
++			bias-disable;
++		};
++	};
++
+ 	i2c_pins_0: i2c0-pins {
+ 		pins_i2c {
+ 			bias-disable;

@@ -1,0 +1,19 @@
+--- a/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
++++ b/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
+@@ -634,3 +634,16 @@
+ &{/timer} {
+ 	hisilicon,erratum-161010101;
+ };
++
++/*
++ * VGP1 feeds the touch controller (vendor: vtouch-supply). The vendor driver
++ * programs it to 2.8 V at probe; mainline only enables the supply, so pin the
++ * voltage here. Keep it on regardless of the touch driver's probe outcome, so
++ * the bus can be inspected with the controller powered.
++ */
++&mt6392_vgp1_reg {
++	regulator-name = "vgp1_touch";
++	regulator-min-microvolt = <2800000>;
++	regulator-max-microvolt = <2800000>;
++	regulator-always-on;
++};

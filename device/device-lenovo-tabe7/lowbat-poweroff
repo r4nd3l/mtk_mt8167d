@@ -1,0 +1,23 @@
+#!/bin/sh
+# Clean poweroff before the cell runs flat. Mainline has no fuel gauge yet,
+# so this watches the MT6392 charger's battery voltage directly.
+# ponytail: fixed threshold, no per-load compensation; while charging the
+# reading is ~70 mV high (I*R), so a low reading then is even more urgent.
+V=${LOWBAT_VFILE:-/sys/class/power_supply/mt6392-charger/voltage_now}
+# With a charger plugged in, LK boots straight back up after a poweroff, so
+# powering off there only produces a reboot loop. Leave it to the charger.
+ONLINE=${LOWBAT_ONLINEFILE:-/sys/class/power_supply/mt6392-charger/online}
+LIMIT=${LOWBAT_LIMIT_UV:-3450000}
+low=0
+while sleep "${LOWBAT_INTERVAL:-60}"; do
+	v=$(cat "$V" 2>/dev/null) || continue
+	if [ "$(cat "$ONLINE" 2>/dev/null)" = 1 ]; then low=0; continue; fi
+	if [ "$v" -lt "$LIMIT" ]; then low=$((low + 1)); else low=0; fi
+	if [ "$low" -ge 3 ]; then
+		echo "lowbat-poweroff: battery at ${v} uV, powering off" > "${LOWBAT_LOG:-/dev/kmsg}"
+		wall "Battery critically low (${v} uV), powering off" 2>/dev/null
+		sleep "${LOWBAT_GRACE:-5}"
+		${LOWBAT_POWEROFF:-poweroff}
+		exit 0
+	fi
+done

@@ -1,0 +1,12 @@
+--- a/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
++++ b/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
+@@ -106,7 +106,8 @@
+ 			128 144 160 176 192 208 224 240
+ 			255
+ 		>;
+-		default-brightness-level = <9>;
++		/* 5 is the lowest readable step; it keeps a 450 mA charger ahead of the display. */
++		default-brightness-level = <5>;
+ 		enable-gpios = <&pio 43 GPIO_ACTIVE_HIGH>;
+ 		power-supply = <&mt6392_vio18_reg>;
+ 		pwms = <&disp_pwm 0 1000000>;

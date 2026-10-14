@@ -1,0 +1,51 @@
+diff --git a/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts b/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
+index 8141aa196..d5535bddb 100644
+--- a/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
++++ b/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
+@@ -46,16 +46,25 @@ reserved-memory {
+ 		#size-cells = <2>;
+ 		ranges;
+ 
+-		/* Carve-out di esempio da 1MB (0x100000 bytes) */
+-		ramoops@42ff0000 {
++		/*
++		 * The previous carve-out sat at 0x42ff0000 and ran for 1 MiB, which
++		 * swallowed secmon@43000000 whole (BL31, 192 KiB). The kernel said so
++		 * at boot:
++		 *   OF: reserved mem: OVERLAP DETECTED!
++		 *   ramoops@42ff0000 overlaps with secmon@43000000
++		 * Every console line past the first 64 KiB was therefore written over
++		 * ARM Trusted Firmware, which handles PSCI, CPU idle and SMC calls.
++		 * Use the 896 KiB the board already reserves for pstore instead.
++		 * 0xe0000 - 0x40000 console = 0xa0000 dump, i.e. 5 records of 128 KiB.
++		 */
++		ramoops@54410000 {
+ 			compatible = "ramoops";
+-			reg = <0x0 0x42ff0000 0x0 0x00100000>; /* Indirizzo a 64-bit e dimensione */
+-			record-size = <0x00020000>;  /* 128KB per ogni log di panic/oops */
+-			console-size = <0x00020000>; /* 128KB per i log della console */
+-			ftrace-size = <0x00020000>;  /* 128KB per i log ftrace */
+-			pmsg-size = <0x00020000>;    /* 128KB per i messaggi utente */
+-			ecc = <1>;                   /* Opzionale: abilita la protezione software ECC */
+-			no-map;                      /* EVITA che il kernel mappi questa RAM linearmente */
++			reg = <0x0 0x54410000 0x0 0xe0000>;
++			record-size = <0x20000>;
++			console-size = <0x40000>;
++			ftrace-size = <0x0>;
++			pmsg-size = <0x0>;
++			no-map;
+ 		};
+ 
+ 		atf-reserved-memory {
+@@ -68,10 +77,7 @@ ram_console-reserved-memory {
+ 			reg = <0x0 0x54400000 0x0 0x10000>;
+ 		};
+ 
+-		pstore-reserved-memory {
+-			compatible = "mediatek,pstore";
+-			reg = <0x0 0x54410000 0x0 0xe0000>;
+-		};
++		/* now described by ramoops@54410000 above */
+ 
+ 		minirdump-reserved-memory {
+ 			compatible = "mediatek,minirdump";

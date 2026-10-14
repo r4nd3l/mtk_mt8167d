@@ -1,0 +1,20 @@
+--- a/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
++++ b/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
+@@ -596,4 +596,15 @@
+ &mt6392_vgp2_reg {
+ 	regulator-min-microvolt = <1800000>;
+ 	regulator-max-microvolt = <1800000>;
+-};
+\ No newline at end of file
++};
++/*
++ * The arch timer loses oneshot events on this SoC: the same kernel that dies
++ * silently within a minute in highres/nohz mode boots reliably with
++ * highres=off nohz=off, and boots reliably in highres mode once the arch_timer
++ * out-of-line workaround path is enabled. Until a MediaTek-specific erratum
++ * entry exists in arch_timer.c, borrow the HiSilicon one: it routes counter
++ * reads through a read-until-stable loop and set_next_event through CVAL.
++ */
++&{/timer} {
++	hisilicon,erratum-161010101;
++};

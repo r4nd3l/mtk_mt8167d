@@ -1,0 +1,17 @@
+#!/bin/sh
+# simpledrm knows nothing about the pwm backlight, so when the compositor
+# blanks the screen (DPMS off) the panel stays lit. Mirror the connector's
+# DPMS state onto the backlight's bl_power.
+# ponytail: 1 s sysfs poll; drop this once mtk-drm drives the DSI panel.
+BL=${BL:-/sys/class/backlight/backlight-lcd/bl_power}
+last=
+while sleep "${INTERVAL:-1}"; do
+	state=$(cat /sys/class/drm/card0-*/dpms 2>/dev/null | head -n1)
+	case "$state" in
+		Off) want=4 ;;
+		On) want=0 ;;
+		*) continue ;;
+	esac
+	[ "$want" = "$last" ] && continue
+	echo "$want" > "$BL" && last=$want
+done

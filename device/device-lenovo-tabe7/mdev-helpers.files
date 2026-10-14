@@ -1,0 +1,12 @@
+# postmarketos-mkinitfs ships /etc/mdev.conf into the initramfs but not the
+# helper scripts that the config calls out to. Eight rules in mdev.conf point
+# at /lib/mdev/persistent-storage, including the one for mmcblk.*, so without
+# this the helper fails on every block device event and /dev/disk/by-partlabel
+# is never populated.
+#
+# mount_subpartitions() in init_functions.sh looks for
+# /dev/disk/by-partlabel/userdata first and only falls back to scanning every
+# partition with fdisk, which does not finish inside its 10 second budget on
+# this board. The boot then drops to the debug shell with
+# "ERROR: failed to mount subpartitions!".
+/lib/mdev/persistent-storage

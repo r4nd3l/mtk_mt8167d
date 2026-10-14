@@ -2,11 +2,12 @@
 pkgname=device-lenovo-tabe7
 pkgdesc="Lenovo Tab E7 (TB-7104F)"
 pkgver=0.1
-pkgrel=7
+pkgrel=27
 url="https://postmarketos.org"
 license="MIT"
 arch="aarch64"
-options="!check !archcheck"
+options="!check !archcheck !strip"
+install="$pkgname.post-install $pkgname.post-upgrade"
 depends="
 	linux-lenovo-tabe7
 	mkbootimg
@@ -15,7 +16,28 @@ depends="
 "
 makedepends="devicepkg-dev"
 source="deviceinfo
-	00-sdlog.sh"
+	mdev-helpers.files
+	gt912f-lenovo-tb7104f.fw
+	gt912f-lenovo-tb7104f.cfg
+	touch-firmware.files
+	90_lenovo-tabe7.gschema.override
+	lowbat-poweroff
+	lowbat-poweroff.initd
+	charge-mode
+	charge-mode.initd
+	backlight-follow-dpms
+	backlight-follow-dpms.initd
+	mtk-wifi.initd
+	90-lenovo-tabe7-wifi-mac.conf
+	ucm-mt8167-mt6392.conf
+	ucm-HiFi.conf
+	powervr-modprobe.conf
+	rogue_22.67.54.30_v1.fw
+	rogue_22.68.54.30_v1.fw
+	ROMv2_lm_patch_1_0_hdr.bin
+	ROMv2_lm_patch_1_1_hdr.bin
+	WIFI_RAM_CODE_8167
+	WMT_SOC.cfg"
 subpackages="$pkgname-nonfree-firmware:nonfree_firmware"
 
 build() {
@@ -24,17 +46,84 @@ build() {
 
 package() {
 	devicepkg_package $startdir $pkgname
-	install -Dm755 "$srcdir"/00-sdlog.sh \
-		"$pkgdir"/usr/share/mkinitfs/hooks/00-lenovo-tabe7-sdlog.sh
+
+	install -Dm644 "$srcdir"/mdev-helpers.files \
+		"$pkgdir"/usr/share/mkinitfs/files/device-lenovo-tabe7-mdev.files
+
+	# Goodix GT912F (flashless) touch firmware and panel config, taken from
+	# the vendor GPL kernel (drivers/input/touchscreen/mediatek/gt912_p98996/
+	# include/firmware_default/gt9xx_firmware.h, first 36878 bytes, and
+	# CTP_CFG_GROUP0_XY from include/config_default/gt9xx_config.h). The
+	# mainline goodix driver uploads the firmware at every power-up and is
+	# built in, so both files have to be in the initramfs.
+	install -Dm644 "$srcdir"/gt912f-lenovo-tb7104f.fw \
+		"$pkgdir"/lib/firmware/goodix/gt912f-lenovo-tb7104f.fw
+	install -Dm644 "$srcdir"/gt912f-lenovo-tb7104f.cfg \
+		"$pkgdir"/lib/firmware/goodix/gt912f-lenovo-tb7104f.cfg
+	install -Dm644 "$srcdir"/touch-firmware.files \
+		"$pkgdir"/usr/share/mkinitfs/files/device-lenovo-tabe7-touch-fw.files
+	# Office defaults: dark theme, no auto-suspend, rotation lock, no animations
+	install -Dm644 "$srcdir"/90_lenovo-tabe7.gschema.override \
+		"$pkgdir"/usr/share/glib-2.0/schemas/90_lenovo-tabe7.gschema.override
+
+	# Clean poweroff before the battery runs flat (no fuel gauge yet)
+	install -Dm755 "$srcdir"/lowbat-poweroff "$pkgdir"/usr/libexec/lowbat-poweroff
+	install -Dm755 "$srcdir"/lowbat-poweroff.initd "$pkgdir"/etc/init.d/lowbat-poweroff
+	install -Dm755 "$srcdir"/charge-mode "$pkgdir"/usr/libexec/charge-mode
+	install -Dm755 "$srcdir"/charge-mode.initd "$pkgdir"/etc/init.d/charge-mode
+
+	# simpledrm cannot switch the pwm backlight off on DPMS; mirror it
+	install -Dm755 "$srcdir"/backlight-follow-dpms "$pkgdir"/usr/libexec/backlight-follow-dpms
+	install -Dm755 "$srcdir"/backlight-follow-dpms.initd "$pkgdir"/etc/init.d/backlight-follow-dpms
+
+	# MT8167 connsys Wi-Fi/BT bring-up (manual start until proven stable)
+	install -Dm755 "$srcdir"/mtk-wifi.initd "$pkgdir"/etc/init.d/mtk-wifi
+	install -Dm644 "$srcdir"/90-lenovo-tabe7-wifi-mac.conf \
+		"$pkgdir"/etc/NetworkManager/conf.d/90-lenovo-tabe7-wifi-mac.conf
+	install -Dm644 "$srcdir"/ucm-mt8167-mt6392.conf \
+		"$pkgdir"/usr/share/alsa/ucm2/conf.d/mt8167-mt6392/mt8167-mt6392.conf
+	install -Dm644 "$srcdir"/ucm-HiFi.conf \
+		"$pkgdir"/usr/share/alsa/ucm2/conf.d/mt8167-mt6392/HiFi.conf
+	install -Dm644 "$srcdir"/powervr-modprobe.conf \
+		"$pkgdir"/etc/modprobe.d/powervr.conf
 }
 
 nonfree_firmware() {
-	pkgdesc="WiFi/BT firmware (added later from downstream nvram)"
-	depends=""
-	mkdir -p "$subpkgdir"
+	pkgdesc="Wi-Fi/BT (connsys) firmware from the stock TB-7104F vendor image, PowerVR GPU firmware"
+	depends="openmttools"
+	local f
+	for f in ROMv2_lm_patch_1_0_hdr.bin ROMv2_lm_patch_1_1_hdr.bin \
+		 WIFI_RAM_CODE_8167 WMT_SOC.cfg; do
+		install -Dm644 "$srcdir"/$f "$subpkgdir"/lib/firmware/$f
+	done
+	# PowerVR GE8300, from gitlab.freedesktop.org/imagination/linux-firmware (powervr)
+	for f in rogue_22.67.54.30_v1.fw rogue_22.68.54.30_v1.fw; do
+		install -Dm644 "$srcdir"/$f "$subpkgdir"/lib/firmware/powervr/$f
+	done
 }
 
 sha512sums="
-c54bd19102050d945b0a7950f2b32f79db857d594676846146d94935a702b47d5f04348a07bc0c96e27e863f9d8c55c5ab4e2dcc97bc2b4be2f9d67ad4ba53e1  deviceinfo
-9393abb71fc9fe9d268ebeccef1d1de62a3950b2bcfd92b9721843b4addf62b5e7822713798b412c47d03b6fb941e14388733fcee1a8124d96e4ba70d0d76ca6  00-sdlog.sh
+8e106a8ffd6db25f0bbb2e07830b21235a9cf5cd85d9f35405d6b6a5c0ee064541ff7b269515f5831d19cc0277c027d6e34450c5f5c8a7aff5345c59d61ec4b3  deviceinfo
+1a725e3abd37776f840cb42d62a218ded665a13160a507bb61c13dc5cc4eefbb0de4990a84ccf0ebdee04d8c829ca546ce32fb20ee8fa3534379d7e59e7f1fd7  mdev-helpers.files
+f764e8a9094e32a2f73e3db6f14ae2500bb5caf59a510a0917373bdaaf9dfc5f54b0d3baa67efdf76836db12c4a189cdb550065c24990c79ec13b9398f6ce061  gt912f-lenovo-tb7104f.fw
+a6e6f989c8732100f16e77b3d7a0f8514142a3dd3ad5d96e68e14b4f3c10eee3bec8867f1a6d58491169b7458c159905dba7521dcbe1ad4f550bd1fe1981c036  gt912f-lenovo-tb7104f.cfg
+48402a10821c02a89d110620226821b2cc05ee2cac372b506ecd405b904e28b18b80fe1ab3ca08ef987509e8ffdfbea0e3c8f80493c41f2464c246c7880e3059  touch-firmware.files
+7449ddd055dd7945e1828815cab06ab108f86072afd683aada9d4504f292aed0825d6df97fd552d37e630f0ae152fc260d0fd4243fa5a300912b87c9aafac094  90_lenovo-tabe7.gschema.override
+8979b0e370ebe6dd19d99d138a61972e4dccaa79f93007895ef51dccb9050a1e683e3ca851b97a3ab482c9144833c4afeec1e2c85b08f9db618bcbf0300cf518  lowbat-poweroff
+85710ec0ea0d188ae1df9f3d2c2b95cdf523c9b0789bb3f7e14b8bcff04cb29f647b100c4480415da4d14498350b2de2cef964a6f181f9fc2d23d376db3ffe87  lowbat-poweroff.initd
+ff4b0c3910359909f863c6cbf5c46b0ba54f84e6a3cd591517a138db6fedba57c43998bc461d7957ad08fefee8320f04c0180c983359de93828dda67107c2197  charge-mode
+5c14471754dc8f76a3e7eb023b4171fb309325ad6ff7430cd49bc61f8fbb021d11debe72a7abb80e06bbf8f0726797a1bbbef893186c2a116c7f2b967af39767  charge-mode.initd
+1af76df2f654a81e32d3bee2a354630231fafffd588c7f2edc832ae183e378fae3b865c5da2232c78997f366b16f4c83eaf78041eba54ce39ecb6e449550d588  backlight-follow-dpms
+fd2bdd4160d22da5557de1c5e40742548d44617741bcddba1935461923db69098cab85e291c54863d062012f61267afcbdaf3af64eb99bc693b08b5b93c4850f  backlight-follow-dpms.initd
+1b73adb13fb41063e0c64dc23e1efb22acf6c3b5b2cd024476f2e475a8bac947eee7729875eb3fbc319a1da8667f14325ab02636730584ac8f92ec09d980937c  mtk-wifi.initd
+a1b09b1f242f3eab9891c4e189fcedb230fdf72af4da00263bfca53237100eb97cc77598db909c71d42adfd7cb530a6d68dc8289ea7b2bb8a1bc5987e9763442  90-lenovo-tabe7-wifi-mac.conf
+a288dba84dbd54f4b0e803458cfe3b36eb0b791b27f2a95dc6df0c48553bfa891ef0c8f1eee406e0efb8cece29fe1184636c7a14b0af4c382379e2249455dc4b  ucm-mt8167-mt6392.conf
+d6105287cb38ac522c74118bdb199208c0921f0aa5f708725d187a20db94242bc1848155d6e831a41cf0984cb53910a0eb1836b82f05ec6e455901e70b92f656  ucm-HiFi.conf
+8bdfd60bd037e98d5bc95fc8f8bdeb60337b1b97f475cfc61cbaef7b53e441150637d3de81bd5f8ea2a7d1351d6da433f38904bae11577bfefc2fd962917e361  powervr-modprobe.conf
+e48b992132d2ee2a824be9d2e270f3e858452cd34295624b3aa487103f0995909bbdce6cc75a70ee766a281b3bcdb59b2c567a44ac924e69bc57dd7209fb303b  rogue_22.67.54.30_v1.fw
+832dccc2a8fa159e546f3d47f0159497307f3c6807eb4de32043d752d2e714e61bbb616b8410f0f5b92b332605610dea8dad240f4ea7976325465a9a125734e7  rogue_22.68.54.30_v1.fw
+9abac0b2ea4fce1033b0832216ac81abc5006ae7267abfcd1fce5a5a885f3bd267f46d1ef0e1bf2efc912ee4e099b34eeb5bc7f1419e9137f908eba2ad696eb4  ROMv2_lm_patch_1_0_hdr.bin
+d93ae54abb917eed89b5872306b52fced1739d10e7ff71a08b91392f9af05b3be7e5fdff9f5f70429a8543572168f16ad321c137f07d7b5ff319654daf59cc8d  ROMv2_lm_patch_1_1_hdr.bin
+a002bb78bb02a54ee9dc8044a5cafffce404b0461e0408bf2045aac3fb83eec2664565a82233dabb62c25f072d9f8b84d2736b980de398db76ae7ce7f191e0c6  WIFI_RAM_CODE_8167
+8a65c860cfd2f784e58f631bca5b17688f203237ef1bf9342b053aafacc3ccc27ae8707cfd62641c3dfec09f6ded91df93c49d91de87d6b256f7e3d6fae16a4b  WMT_SOC.cfg
 "

@@ -1,0 +1,105 @@
+--- a/arch/arm64/boot/dts/mediatek/mt8167.dtsi	2026-10-11 22:29:01.414191311 +0200
++++ b/arch/arm64/boot/dts/mediatek/mt8167.dtsi	2026-10-11 22:29:01.416191364 +0200
+@@ -743,4 +743,48 @@
+ 		<GIC_SPI 9 IRQ_TYPE_LEVEL_LOW>,
+ 		<GIC_SPI 10 IRQ_TYPE_LEVEL_LOW>,
+ 		<GIC_SPI 11 IRQ_TYPE_LEVEL_LOW>;
+-};
+\ No newline at end of file
++};
++/*
++ * Connectivity subsystem (Wi-Fi/BT/GPS/FM combo, "consys") and its BTIF
++ * UART-like link, as used by the vendor-derived MediaTek connectivity
++ * drivers (drivers/misc/mediatek, from Luca Leonardo Scorcia's
++ * psclassic-consys branch).
++ */
++/ {
++	soc {
++		btif: btif@1100e000 {
++			compatible = "mediatek,btif";
++			reg = <0 0x1100e000 0 0x1000>,
++			      <0 0x11000380 0 0x80>,
++			      <0 0x11000400 0 0x80>;
++			interrupts = <GIC_SPI 107 IRQ_TYPE_LEVEL_LOW>,
++				     <GIC_SPI 94 IRQ_TYPE_LEVEL_LOW>,
++				     <GIC_SPI 95 IRQ_TYPE_LEVEL_LOW>;
++			clocks = <&topckgen CLK_TOP_BTIF>,
++				 <&topckgen CLK_TOP_APDMA>;
++			clock-names = "btifc", "apdmac";
++			status = "disabled";
++		};
++
++		consys: consys@18070000 {
++			compatible = "mediatek,mt8167-consys";
++			reg = <0 0x18070000 0 0x0200>,
++			      <0 0x10000000 0 0x2000>;
++			power-domains = <&spm MT8167_POWER_DOMAIN_CONN>;
++			interrupts = <GIC_SPI 195 IRQ_TYPE_LEVEL_LOW>,
++				     <GIC_SPI 197 IRQ_TYPE_LEVEL_LOW>;
++			resets = <&watchdog MT8167_TOPRGU_CONN_MCU_RST>;
++			reset-names = "connsys";
++			status = "disabled";
++		};
++
++		wifi: wifi@180f0000 {
++			compatible = "mediatek,wifi";
++			reg = <0 0x180f0000 0 0x005c>;
++			interrupts = <GIC_SPI 196 IRQ_TYPE_LEVEL_LOW>;
++			clocks = <&topckgen CLK_TOP_APDMA>;
++			clock-names = "wifi-dma";
++			status = "disabled";
++		};
++	};
++};
+--- a/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts	2026-10-11 22:29:01.414191311 +0200
++++ b/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts	2026-10-11 22:29:01.416191364 +0200
+@@ -705,3 +705,49 @@
+ &mt6392_audio_codec {
+ 	status = "okay";
+ };
++
++/* Wi-Fi/BT combo (consys), as on Luca's x04g. No GPS LNA on this board. */
++/ {
++	reserved-memory {
++		consys_memory: consys-reserve-memory {
++			compatible = "mediatek,consys-reserve-memory";
++			size = <0 0x200000>;
++			alignment = <0 0x200000>;
++			no-map;
++		};
++	};
++};
++
++&pio {
++	gps_lna_default_pins: gps-lna-default-pins { };
++	gps_lna_state_init_pins: gps-lna-init-pins { };
++	gps_lna_state_oh_pins: gps-lna-state-oh-pins { };
++	gps_lna_state_ol_pins: gps-lna-state-ol-pins { };
++};
++
++&btif {
++	status = "okay";
++};
++
++&consys {
++	status = "okay";
++	memory-region = <&consys_memory>;
++	vcn35-supply = <&mt6392_vcn35_reg>;
++	vcn18-supply = <&mt6392_vcn18_reg>;
++	pinctrl-names = "default", "gps_lna_state_init", "gps_lna_state_oh", "gps_lna_state_ol";
++	pinctrl-0 = <&gps_lna_default_pins>;
++	pinctrl-1 = <&gps_lna_state_init_pins>;
++	pinctrl-2 = <&gps_lna_state_oh_pins>;
++	pinctrl-3 = <&gps_lna_state_ol_pins>;
++};
++
++&wifi {
++	status = "okay";
++};
++
++/* The PMIC "home" key is the volume-down button (vendor keypad map; Luca's x04g does the same). */
++&mt6392keys {
++	key-home {
++		linux,keycodes = <KEY_VOLUMEDOWN>;
++	};
++};

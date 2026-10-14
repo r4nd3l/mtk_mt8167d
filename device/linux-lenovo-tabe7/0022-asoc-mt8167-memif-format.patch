@@ -1,0 +1,141 @@
+ASoC: mediatek: mt8167: program the memif sample format
+
+Mainline never sets the per-memif format field in AFE_MEMIF_PBUF_SIZE, so
+DL1 stays in 16-bit mode. PipeWire opens the card as S32_LE and the
+speaker plays choppy noise. Positions and values follow the vendor driver.
+
+--- a/sound/soc/mediatek/mt8167/mt8167-afe-pcm.c
++++ b/sound/soc/mediatek/mt8167/mt8167-afe-pcm.c
+@@ -542,6 +542,69 @@
+ 	return IRQ_NONE;
+ }
+ 
++/*
++ * Memif sample format, a 2-bit field per memif (0 = 16 bit, 1 = 24 bit in
++ * 32, 3 = 32 bit). Field positions are from the vendor driver. The common
++ * mtk_memif_set_format() only knows a 1-bit hd flag, so it is set here.
++ * Without it DL1 stays in 16-bit mode and S32 audio comes out as noise.
++ */
++static const u8 mt8167_memif_fmt_shift[MT8167_AFE_MEMIF_NUM] = {
++	[MT8167_AFE_MEMIF_DL1] = 16,
++	[MT8167_AFE_MEMIF_DL2] = 18,
++	[MT8167_AFE_MEMIF_VUL] = 22,
++	[MT8167_AFE_MEMIF_DAI] = 24,
++	[MT8167_AFE_MEMIF_AWB] = 20,
++};
++
++static int mt8167_memif_hw_params(struct snd_pcm_substream *substream,
++				  struct snd_pcm_hw_params *params,
++				  struct snd_soc_dai *dai)
++{
++	struct mtk_base_afe *afe = snd_soc_dai_get_drvdata(dai);
++	unsigned int shift = mt8167_memif_fmt_shift[dai->id];
++	unsigned int fmt;
++	int ret;
++
++	ret = mtk_afe_fe_hw_params(substream, params, dai);
++	if (ret)
++		return ret;
++
++	if (dai->id == MT8167_AFE_MEMIF_VUL)
++		regmap_update_bits(afe->regmap, AFE_CONN_24BIT,
++				   AFE_CONN_24BIT_O09 | AFE_CONN_24BIT_O10,
++				   params_width(params) > 16 ?
++				   AFE_CONN_24BIT_O09 | AFE_CONN_24BIT_O10 : 0);
++
++	if (!shift)
++		return 0;
++
++	switch (params_format(params)) {
++	case SNDRV_PCM_FORMAT_S16_LE:
++		fmt = 0;
++		break;
++	case SNDRV_PCM_FORMAT_S24_LE:
++		fmt = 1;
++		break;
++	case SNDRV_PCM_FORMAT_S32_LE:
++		fmt = 3;
++		break;
++	default:
++		return -EINVAL;
++	}
++
++	return regmap_update_bits(afe->regmap, AFE_MEMIF_PBUF_SIZE,
++				  3 << shift, fmt << shift);
++}
++
++static const struct snd_soc_dai_ops mt8167_memif_dai_ops = {
++	.startup	= mtk_afe_fe_startup,
++	.shutdown	= mtk_afe_fe_shutdown,
++	.hw_params	= mt8167_memif_hw_params,
++	.hw_free	= mtk_afe_fe_hw_free,
++	.prepare	= mtk_afe_fe_prepare,
++	.trigger	= mtk_afe_fe_trigger,
++};
++
+ static struct snd_soc_dai_driver mt8167_memif_dai_driver[] = {
+ 	/* FE DAIs: memory intefaces to CPU */
+ 	{
+@@ -556,7 +619,7 @@
+ 				   SNDRV_PCM_FMTBIT_S24_LE |
+ 				   SNDRV_PCM_FMTBIT_S32_LE,
+ 		},
+-		.ops = &mtk_afe_fe_ops,
++		.ops = &mt8167_memif_dai_ops,
+ 	}, {
+ 		.name = "DL2",
+ 		.id = MT8167_AFE_MEMIF_DL2,
+@@ -569,7 +632,7 @@
+ 				   SNDRV_PCM_FMTBIT_S24_LE |
+ 				   SNDRV_PCM_FMTBIT_S32_LE,
+ 		},
+-		.ops = &mtk_afe_fe_ops,
++		.ops = &mt8167_memif_dai_ops,
+ 	}, {
+ 		.name = "VUL",
+ 		.id = MT8167_AFE_MEMIF_VUL,
+@@ -582,7 +645,7 @@
+ 				   SNDRV_PCM_FMTBIT_S24_LE |
+ 				   SNDRV_PCM_FMTBIT_S32_LE,
+ 		},
+-		.ops = &mtk_afe_fe_ops,
++		.ops = &mt8167_memif_dai_ops,
+ 	}, {
+ 		.name = "DAI",
+ 		.id = MT8167_AFE_MEMIF_DAI,
+@@ -595,7 +658,7 @@
+ 				 SNDRV_PCM_RATE_32000,
+ 			.formats = SNDRV_PCM_FMTBIT_S16_LE,
+ 		},
+-		.ops = &mtk_afe_fe_ops,
++		.ops = &mt8167_memif_dai_ops,
+ 	}, {
+ 		.name = "HDMI",
+ 		.id = MT8167_AFE_MEMIF_HDMI,
+@@ -608,7 +671,7 @@
+ 				   SNDRV_PCM_FMTBIT_S24_LE |
+ 				   SNDRV_PCM_FMTBIT_S32_LE,
+ 		},
+-		.ops = &mtk_afe_fe_ops,
++		.ops = &mt8167_memif_dai_ops,
+ 	}, {
+ 		.name = "TDM_IN",
+ 		.id = MT8167_AFE_MEMIF_TDM_IN,
+@@ -621,7 +684,7 @@
+ 				   SNDRV_PCM_FMTBIT_S24_LE |
+ 				   SNDRV_PCM_FMTBIT_S32_LE,
+ 		},
+-		.ops = &mtk_afe_fe_ops,
++		.ops = &mt8167_memif_dai_ops,
+ 	}, {
+ 		.name = "ULM",
+ 		.id = MT8167_AFE_MEMIF_MULTILINE_IN,
+@@ -640,7 +703,7 @@
+ 				   SNDRV_PCM_FMTBIT_S24_LE |
+ 				   SNDRV_PCM_FMTBIT_S32_LE,
+ 		},
+-		.ops = &mtk_afe_fe_ops,
++		.ops = &mt8167_memif_dai_ops,
+ 	},
+ };
+ 

@@ -1,0 +1,34 @@
+#!/sbin/openrc-run
+# Bring up the MT8167 internal connsys (Wi-Fi + BT) with the vendor-derived
+# WMT drivers and openmttools. Enabled by the device package post-install.
+description="MediaTek connsys Wi-Fi/Bluetooth bring-up"
+pidfile=/run/mtdaemon.pid
+
+depend() {
+	need localmount
+	after modules
+	before NetworkManager networkmanager
+}
+
+start() {
+	ebegin "Starting MediaTek connsys"
+	for m in btif mtk_wmt_detect mtk_stp_wmt_soc wmt_chrdev_wifi wlan_gen2 stp_chrdev_bt; do
+		modprobe "$m" || { eend 1 "modprobe $m failed"; return 1; }
+	done
+	/usr/bin/mtinit || { eend 1 "mtinit failed"; return 1; }
+	start-stop-daemon --start --background --make-pidfile --pidfile "$pidfile" \
+		--exec /usr/bin/mtdaemon
+	# the Wi-Fi char device appears once the WMT core is up
+	i=0
+	while [ ! -e /dev/wmtWifi ] && [ $i -lt 20 ]; do sleep 0.5; i=$((i + 1)); done
+	[ -e /dev/wmtWifi ] || { eend 1 "/dev/wmtWifi did not appear"; return 1; }
+	echo 1 > /dev/wmtWifi
+	eend $?
+}
+
+stop() {
+	ebegin "Stopping MediaTek connsys"
+	[ -e /dev/wmtWifi ] && echo 0 > /dev/wmtWifi
+	start-stop-daemon --stop --pidfile "$pidfile" --exec /usr/bin/mtdaemon
+	eend 0
+}

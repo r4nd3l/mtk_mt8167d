@@ -1,0 +1,14 @@
+#!/sbin/openrc-run
+description="Charge with the panel off after a cable power-on"
+command=/usr/libexec/charge-mode
+
+depend() {
+	after sshd
+	before display-manager backlight-follow-dpms
+}
+
+start() {
+	ebegin "Checking for charger-only boot"
+	"$command"
+	eend $?
+}

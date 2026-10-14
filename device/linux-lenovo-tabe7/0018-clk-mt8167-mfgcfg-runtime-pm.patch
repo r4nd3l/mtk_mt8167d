@@ -1,0 +1,11 @@
+--- a/drivers/clk/mediatek/clk-mt8167-mfgcfg.c
++++ b/drivers/clk/mediatek/clk-mt8167-mfgcfg.c
+@@ -33,6 +33,8 @@
+ static const struct mtk_clk_desc mfg_desc = {
+ 	.clks = mfg_clks,
+ 	.num_clks = ARRAY_SIZE(mfg_clks),
++	/* the CG registers live in the MFG power domain */
++	.need_runtime_pm = true,
+ };
+ 
+ static const struct of_device_id of_match_clk_mt8167_mfgcfg[] = {

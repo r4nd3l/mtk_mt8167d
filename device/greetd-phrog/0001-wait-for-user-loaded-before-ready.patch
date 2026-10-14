@@ -1,0 +1,47 @@
+From: Lenovo Tab E7 port
+Subject: user_session_page: signal ready only once the user is loaded
+
+ready was set right after the users were appended, before each User had
+fetched its name over D-Bus. With one user and one session the lockscreen
+then jumps to the keypad and opens a greetd session for an empty
+username, so the first PIN always fails (USER_UNKNOWN, or "a session is
+already being configured" when the real name arrives). Set ready from the
+loaded handler instead, and never open a session for an empty name.
+
+diff --git a/src/lockscreen.rs b/src/lockscreen.rs
+index c618740..036c08b 100644
+--- a/src/lockscreen.rs
++++ b/src/lockscreen.rs
+@@ -183,7 +183,7 @@ mod imp {
+ 
+         async fn create_session(&self) {
+             let user = self.user_session_page.get().unwrap().username();
+-            if user.is_none() || self.session.borrow().eq(&user) {
++            if user.as_deref().map_or(true, str::is_empty) || self.session.borrow().eq(&user) {
+                 // no user selected, or the session for that user is already started
+                 return;
+             }
+diff --git a/src/user_session_page.rs b/src/user_session_page.rs
+index 1f5fbca..b31bb17 100644
+--- a/src/user_session_page.rs
++++ b/src/user_session_page.rs
+@@ -161,6 +161,10 @@ mod imp {
+                             this.box_users.select_row(Some(&row));
+                             row.grab_focus();
+                         }
++                        // Only now is the username known. Signalling ready any earlier
++                        // lets the lockscreen open a greetd session for an empty user,
++                        // and the first PIN then always fails with USER_UNKNOWN.
++                        this.obj().set_ready(true);
+                     }
+                 }));
+ 
+@@ -191,8 +195,6 @@ mod imp {
+                     row.grab_focus();
+                 }
+ 
+-                this.obj().set_ready(true);
+-
+                 let mut added_stream = accounts_proxy.receive_user_added().await.unwrap();
+                 let mut deleted_stream = accounts_proxy.receive_user_deleted().await.unwrap();
+ 

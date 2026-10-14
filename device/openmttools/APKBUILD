@@ -1,0 +1,25 @@
+# Maintainer: matemiller992 <matemiller992@users.noreply.github.com>
+pkgname=openmttools
+pkgver=0_git20260411
+pkgrel=0
+pkgdesc="Open replacements for MediaTek wmt_loader and connsys launcher (WMT Wi-Fi/BT bring-up)"
+url="https://github.com/lscorcia/openmttools"
+arch="aarch64"
+license="GPL-3.0-or-later"
+options="!check !pmb:crossdirect"
+makedepends="linux-headers"
+source="$pkgname-master.tar.gz::https://github.com/lscorcia/openmttools/archive/refs/heads/master.tar.gz"
+builddir="$srcdir/openmttools-master"
+
+build() {
+	make CC="${CC:-gcc}" CFLAGS="-I. $CFLAGS"
+}
+
+package() {
+	install -Dm755 bin/mtinit "$pkgdir"/usr/bin/mtinit
+	install -Dm755 bin/mtdaemon "$pkgdir"/usr/bin/mtdaemon
+}
+
+sha512sums="
+f7c08190d5152c25aa3e8be0f653583fd3a4d8b8356133a7e0d3c92a3a86145ba1540fae2e445f02ea1a36d8a70239d3f17c5452529d4523d84b2994e22feae6  $pkgname-master.tar.gz
+"

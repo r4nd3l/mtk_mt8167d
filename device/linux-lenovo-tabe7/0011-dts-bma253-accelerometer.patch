@@ -1,0 +1,24 @@
+--- a/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
++++ b/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
+@@ -260,7 +260,20 @@
+ 	pinctrl-0 = <&i2c_pins_1>;
+ 	clock-div = <2>;
+ 
+-	// TODO: orientation sensor gsl3670 @ 0x40 or bma253 @ 0x18
++	/*
++	 * Bosch BMA253 accelerometer (chip ID 0xfa read at 0x18 on this unit;
++	 * the vendor DTS also lists a KXTJ2-1009 at 0x0e, which is not fitted).
++	 * The vendor "direction = <4>" (x -> -x, z -> -z) left the picture
++	 * upside down in every orientation under iio-sensor-proxy, so x and y
++	 * are both flipped relative to it (checked on hardware 10-11).
++	 */
++	accelerometer@18 {
++		compatible = "bosch,bma253";
++		reg = <0x18>;
++		mount-matrix = "1", "0", "0",
++			       "0", "-1", "0",
++			       "0", "0", "-1";
++	};
+ };
+ 
+ &i2c2 {

@@ -1,79 +1,115 @@
-# Maintainer: r4nd3l <r4nd3l@users.noreply.github.com>
-# Kernel for the Lenovo Tab E7 (TB-7104F) — MediaTek MT8167 + MT6392 PMIC.
-# Based on Luca Scorcia's x04g-7.2-rc1 branch which has working MT6392 PMIC,
-# eMMC, SD, USB, and display support for MT8167 devices.
+# Kernel config based on: arch/arm64/configs/defconfig
+# Maintainer: matemiller992 <matemiller992@users.noreply.github.com>
+
 pkgname=linux-lenovo-tabe7
-pkgver=7.2_rc1
-pkgrel=1
-pkgdesc="Mainline kernel for Lenovo Tab E7 (TB-7104F, MT8167)"
+pkgver=7.3.0_rc5
+pkgrel=41
+pkgdesc="Lenovo Tab E7 (TB-7104F) kernel fork"
 arch="aarch64"
 _carch="arm64"
-url="https://github.com/lscorcia/linux"
+_flavor="lenovo-tabe7"
+url="https://kernel.org"
 license="GPL-2.0-only"
 options="!strip !check !tracedeps pmb:cross-native"
-makedepends="
-	bash
-	bison
-	findutils
-	flex
-	openssl-dev
-	perl
-	gmp-dev
-	mpc1-dev
-	mpfr-dev
-	xz
-	postmarketos-installkernel
-"
+makedepends="bash bison clang findutils flex installkernel lld llvm openssl-dev perl zstd"
 
-_commit="x04g-7.2-rc1"
+# Luca Leonardo Scorcia's MT8167 branch, which carries the MT6392 PMIC and
+# display work this device depends on.
+_repo="https://github.com/lscorcia/linux"
+_commit="1e18b5439b06e4c670eb83a6764bde9bcd56ac7b"
+
 source="
-	linux-$pkgver.tar.gz::https://github.com/lscorcia/linux/archive/refs/heads/$_commit.tar.gz
-	mt8167-lenovo-tabe7.dts
-	tabe7.fragment
-	0001-mtk-wdt-early-disable-mt8167.patch
+	$pkgname-$_commit.tar.gz::$_repo/archive/$_commit.tar.gz
+	config-$_flavor.$arch
+	mt6392_charger.c
+	mt8167-mt6392.c
+	mediatek-connectivity.tar.gz
+	0001-pwrap-mt8167-slave-bit-order-and-forced-init.patch
+	0002-mtk-gpt-defer-irq-until-handler-is-set.patch
+	0003-dts-move-ramoops-off-secmon.patch
+	0004-mt6392-charger-wireup.patch
+	0005-dts-arch-timer-ool-workaround.patch
+	0006-dts-enable-mmsys-clocks-and-disp-pwm-backlight.patch
+	0007-dts-goodix-gt912f-touchscreen.patch
+	0008-dts-default-brightness-5.patch
+	0009-dts-vgp1-2v8-for-touch.patch
+	0010-goodix-fwupload-wait-for-fw-start.patch
+	0011-dts-bma253-accelerometer.patch
+	0012-simpledrm-report-dsi-connector.patch
+	0013-asoc-mt8167-mt6392-machine-kconfig.patch
+	0014-dts-sound-card.patch
+	0015-dts-consys-wifi-bt-and-volume-down.patch
+	0016-misc-hook-mediatek-connectivity.patch
+	0018-clk-mt8167-mfgcfg-runtime-pm.patch
+	0019-dts-mt8167-powervr-gpu.patch
+	0020-dts-sound-external-speaker-amp.patch
+	0021-dts-volume-down-on-keypad-col1.patch
+	0022-asoc-mt8167-memif-format.patch
 "
 builddir="$srcdir/linux-$_commit"
 
 prepare() {
-	default_prepare
+	# the charger driver is a new file, so it is copied in rather than patched
+	cp "$srcdir"/mt6392_charger.c "$builddir"/drivers/power/supply/
+	cp "$srcdir"/mt8167-mt6392.c "$builddir"/sound/soc/mediatek/mt8167/
+	# MediaTek connsys (Wi-Fi/BT) vendor drivers, ported from Luca Leonardo
+	# Scorcia's psclassic-consys branch to 7.3 (cfg80211 wdev ops, strncpy
+	# shim, of_gpio removal, proc buffer bounds). abuild unpacks the tarball.
+	cp -r "$srcdir"/mediatek "$builddir"/drivers/misc/
 
-	# inject our board DTS into the kernel tree + build target
-	cp "$srcdir/mt8167-lenovo-tabe7.dts" \
-		"$builddir/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tabe7.dts"
-	if ! grep -q mt8167-lenovo-tabe7 "$builddir/arch/arm64/boot/dts/mediatek/Makefile"; then
-		echo 'dtb-$(CONFIG_ARCH_MEDIATEK) += mt8167-lenovo-tabe7.dtb' \
-			>> "$builddir/arch/arm64/boot/dts/mediatek/Makefile"
-	fi
-	# config: arm64 defconfig + our bring-up fragment
-	cd "$builddir"
-	make ARCH="$_carch" defconfig
-	ARCH="$_carch" scripts/kconfig/merge_config.sh -m .config "$srcdir/tabe7.fragment"
-	make ARCH="$_carch" olddefconfig
+	default_prepare
+	cp "$srcdir"/config-$_flavor.$arch "$builddir"/.config
 }
 
 build() {
-	cd "$builddir"
 	unset LDFLAGS
-	make ARCH="$_carch" KBUILD_BUILD_VERSION="$((pkgrel + 1))-$pkgname"
+	make ARCH="$_carch" LLVM=1 \
+		KBUILD_BUILD_VERSION="$((pkgrel + 1))-postmarketOS"
 }
 
 package() {
 	mkdir -p "$pkgdir"/boot
-	make -C "$builddir" \
+	make zinstall modules_install dtbs_install LLVM=1 \
 		ARCH="$_carch" \
 		INSTALL_PATH="$pkgdir"/boot \
 		INSTALL_MOD_PATH="$pkgdir" \
 		INSTALL_MOD_STRIP=1 \
-		INSTALL_DTBS_PATH="$pkgdir"/boot/dtbs \
-		zinstall modules_install dtbs_install
-	rm -f "$pkgdir"/lib/modules/*/build "$pkgdir"/lib/modules/*/source
+		INSTALL_DTBS_PATH="$pkgdir"/boot/dtbs
+
+	# mkinitfs locates the kernel through this file. Without it it reports
+	# "only one kernel release/flavor is supported, found: []" and the
+	# install aborts.
 	install -D "$builddir"/include/config/kernel.release \
 		"$pkgdir"/usr/share/kernel/$pkgname/kernel.release
+
+	rm -f "$pkgdir"/lib/modules/*/build "$pkgdir"/lib/modules/*/source
 }
 
 sha512sums="
-b55bd06b4fcdd35fe131948190250f7021db41027134a4411963097afc0c2a14d6f00bd766b7943eca133dc9e0dfadaf3e90beee0684c042be1a7b0bd1b44559  linux-7.2_rc1.tar.gz
-ee6e8ab7b9504a2e1b9e638dfef365e33c788a56f13132eb85e29c3c24124c74335796ec56cefb8ee6ad56f278d8baf1a5bee6b081019a214c22b28a128486af  mt8167-lenovo-tabe7.dts
-dee3100fbaff7c7e1c7a267af47ede033f8716da75207cd22264903c55c1bf2c4540e73c36a301b5a95576ca2b00a9655ebc1a9340947b3a34217ea96a0181f8  tabe7.fragment
-cfd526c3694de795640549063fd9841e2fb2fc4e8aa6f281da16819e7baae255a89ae25f7c62939bef5a67c19b730eb7545c3a5e2e05d0ef63f0559479a4526e  0001-mtk-wdt-early-disable-mt8167.patch
+d865c8da9ca8ba19afa3bd3347e64fe097e0f2bb537380e8f5dc258a4340672d5bea02c674d4424a252edd0e48c47023e5e3699fd1b5641e44c7069e686eed44  linux-lenovo-tabe7-1e18b5439b06e4c670eb83a6764bde9bcd56ac7b.tar.gz
+0eabcdece35ce3139027f178e7418065449b3599fda6e9f11f696ec640be9646cf9a8379304c4187306c6c1ba23fa139e66d99e2680140add1d53391b9aa67a9  config-lenovo-tabe7.aarch64
+5350c5d10dd162ea5b3208050c4e1d1b9c81864c2dd7ab89c2fcff3c6089e528d0c66ca99bf49a14139cc31d14902d08bcddbd209887a1ed33683ba87b641f5c  mt6392_charger.c
+341f1ee4fc3001e67fc21ad7654bc117049db51714e88930905a04da6d280382c768461c9a139bf0aa60cf68774de8b518e9fea571f6e5cdd35bbc086101fc5d  mt8167-mt6392.c
+dfc429fb0fa2ea80baf6d3c8518137ad12af4d6d8163d151ae735a6be6fa849ec9c038f25a987dc10600d1f616ca908ff8fe7ad84ff8669a7fe620ef944c7615  mediatek-connectivity.tar.gz
+3f938af81dbd57007fcec1a8bf7856c3ace5812721957e02ae5fe701dc08ad27002d3c8747dac99ba29cbc7b9a89bf4020ab0d85258376254ffc92d0d1cc5c22  0001-pwrap-mt8167-slave-bit-order-and-forced-init.patch
+bfbe5ecd4b08374a7c048040030de8fb54ead369e204dc7a197a0e474a45bee95f1a4afcfe93b27443a49d07d91144118a212f620bc09f7f81b3c4372efe7e70  0002-mtk-gpt-defer-irq-until-handler-is-set.patch
+af80fef434dc6b4c49352d48891505b1b02a71e3f1d6a624359d1ca596a3770a6a67c353b49bd91aa63e6e19e3e3284f440ddacefe13d91fba3927ffb230bbd1  0003-dts-move-ramoops-off-secmon.patch
+fc0087c421d10d6a0aff767a1830dcc4a81e2cf533e16d5974899b187d24bef45ab3d09553d91465ac08a8a088e4100cd8449e4a5ae5190dbf3acb12d3892b29  0004-mt6392-charger-wireup.patch
+70202b5f91e65638d2c36c455c5ef208595cd489ae8e333053268a22a117235dce692d11239a0dbfaf6f38202d85bdffe87e3d62699548e510dee92f4eaaf248  0005-dts-arch-timer-ool-workaround.patch
+44114c387340b44430026f86d98e65ceab4ff107e0531e43688f723ca1a45b941c2062255a1014aca64ea3d607de0c8c7a46d9935007ec1870c00de6ffd61593  0006-dts-enable-mmsys-clocks-and-disp-pwm-backlight.patch
+1cc7acdb18a771d68ce1b5c63c4b1cbd0be354448b1af97b0df85ab4b2bd470a3329213ba5f04d837c26251a9cc65ba6b43848c12f87155f0246ca19881515b1  0007-dts-goodix-gt912f-touchscreen.patch
+6ffd95fb0461f19cfa75bf11f450f088530b1cce6f8ecb1dac822abbb987d5e7920a10c1413c1a8d4788a41594e928ded086ce274f0abcdea26a41725ed00fda  0008-dts-default-brightness-5.patch
+5d3416437488b9940fd3e4ab5e2a105f222d5946ea0b27fa0789d7fe5262b73b94e5b74235c0767b59b37802b5915f1829d7fa9bf46b9901347dd3827887fa76  0009-dts-vgp1-2v8-for-touch.patch
+b6cb69fa832e9763bdf9d394e6c700fcb98031ea59d6c5b03f1bc568f148fe72edead52c9e2dd9d08595f5996fcef2be27e7f76dce9acdae9bb72e29099ad96f  0010-goodix-fwupload-wait-for-fw-start.patch
+957b63496fac9efe3452ecbbb6fa01c46c0b360c19c82cd30b2a647a7057d879aa16719ea619dc9d8c8728620e73c1c1f3cda4bfe0b322685de599b7a252b21b  0011-dts-bma253-accelerometer.patch
+ddc9bf3ac221813474c910604f9bc97aa397255dd6244ae66351fefe4ca99b993632b4a1c47f59149f5fe9784437543fb4bedb201b41c88c92f0aa2acf5868d4  0012-simpledrm-report-dsi-connector.patch
+3967d4d8fcb00562a94daaa451a865456b8c0c587cd35392c9977f0290c1db308cb4952de2e31bcb47c6c1ea424c28b15731331d78bfbbe7745cb25337e6bad3  0013-asoc-mt8167-mt6392-machine-kconfig.patch
+1060625a0d85e067dffb83d3755ae8158f8e679ea42fe1f1f19a2170055518f3b066593b1c2bba4e249f4f8fe218565d49c109461eec1c669f4ea267e339a715  0014-dts-sound-card.patch
+794d85457544b4821cfd8b03a7c18eb1c1e1618f43527f89950b03ea8f6f8e239170a65dbe7db5ccf06fb7ae3c123122677e0bb48625797700dc1061522630f9  0015-dts-consys-wifi-bt-and-volume-down.patch
+e3acc85ae4ab41b548d3c94aca4481cf9d3842ea80b68bb0131864a5adf6e73d6e26069b69d39217cc5e25949916edfcb4a543b7a81d315dd5fa3bc8657abd5d  0016-misc-hook-mediatek-connectivity.patch
+158178b4aedf8205ad545aea9c4c32b1eec9968f2eed0e63380536fdf1c1e8d11a6fc58228e6d3f1bd5f94c1986dbff6dc05a0a9bc2559605b776c31fb9c833e  0018-clk-mt8167-mfgcfg-runtime-pm.patch
+8749889b671b0c19654bedde46e4f696a3c14047f3c9896fc0875a496013efa1c9c3527968d4f48fac4d9475323eb8e04ea873bacf864c01586d4c8541278963  0019-dts-mt8167-powervr-gpu.patch
+c62703c9a955e3f3296ade97f8f189d12a4b73e2a3fface4bc5db9cbd93829ec639d12466fa7c89df6d46096a6118a50f6a6d5afaf33f18589e8f497bdfc7cc0  0020-dts-sound-external-speaker-amp.patch
+7a552ff5adf55e7158509ffdc83c50212bd63bed3dcfd303a3fb50e01af5b71cfbf80bc533c4a8d25af2a680cf2e0659cf03005188ce495e94a807f999988b9a  0021-dts-volume-down-on-keypad-col1.patch
+21a9d394747b6af9dd239ac409658c6c28db0450fad67e12315e8082b24350a312dd8e929c82bb98946010bf7a4c0b49e7b2ba69e1c6b18741baec6a3fcd3d55  0022-asoc-mt8167-memif-format.patch
 "

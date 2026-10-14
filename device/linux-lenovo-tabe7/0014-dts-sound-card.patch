@@ -1,0 +1,34 @@
+--- a/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
++++ b/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
+@@ -677,3 +677,31 @@
+ 	regulator-max-microvolt = <2800000>;
+ 	regulator-always-on;
+ };
++
++/*
++ * Sound: SoC internal codec for headphone and microphones, MT6392 class-D
++ * amplifier for the speaker, glued by the mt8167-mt6392 machine driver.
++ * No jack detection yet.
++ */
++/ {
++	mt8167_audio_codec: mt8167-audio-codec {
++		compatible = "mediatek,mt8167-codec";
++		clocks = <&topckgen CLK_TOP_AUDIO>;
++		clock-names = "bus";
++		mediatek,afe-regmap = <&afe>;
++		mediatek,apmixedsys-regmap = <&apmixedsys>;
++		mediatek,dmic-wire-mode = <1>;
++		mediatek,headphone-cap-sel = <1>;
++	};
++
++	sound {
++		compatible = "mediatek,mt8167-mt6392-sound";
++		mediatek,platform = <&afe>;
++		mediatek,audio-codec = <&mt8167_audio_codec>;
++		mediatek,speaker-codec = <&mt6392_audio_codec>;
++	};
++};
++
++&mt6392_audio_codec {
++	status = "okay";
++};

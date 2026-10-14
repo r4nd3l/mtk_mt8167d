@@ -13,59 +13,51 @@ a budget 7" Android tablet built around a MediaTek MT8167D SoC.
 | eMMC | 8 GB |
 | RAM | 1 GB (declared in DTS; unconfirmed against physical population) |
 | Display | 7" IPS, 1024x600 |
-| Bootloader | Locked, SBC + DAA enabled |
+| Bootloader | SBC + DAA enabled, unlockable via fastboot |
 
 ## Status
 
-**Not yet booting to a usable rootfs.** Current state:
+**Boots postmarketOS (Phosh) from eMMC and is usable as a daily tablet.**
+Kernel: Luca Leonardo Scorcia's `x04g` 7.3-rc5 tree plus the patches in
+`device/linux-lenovo-tabe7/`.
 
-- Kernel + DTS + config fragment build and flash successfully via `mtkclient`
-  (see [Flashing](#flashing) — the locked/SBC+DAA bootloader is bypassed via
-  the Kamakiri exploit chain, no unlock needed).
-- After fixing the Android boot image offsets (see below), the kernel now
-  runs for 45-54 seconds — far past earlier attempts — with a USB gadget
-  (`idProduct=2001`) coming up and staying enumerated for that whole window.
-- It still doesn't reach a working console/rootfs. The kernel is configured
-  with `pstore`/`ramoops` (`device/linux-lenovo-tabe7/tabe7.fragment`) reserved
-  at `0x44400000` (1 MB) specifically so a panic from this stage can be read
-  back via `mtk.py peek 0x44400000 0x100000` without needing UART or a
-  working console — that's the next debugging step.
-- Physical UART pad location and signal voltage (1.8V vs 3.3V) on this board
-  are still unconfirmed.
+Working:
 
-### The boot-address bug (fixed)
+- Reliable boot from eMMC: pwrap `OP_TYPE`/`MSB_FIRST` fix, arch timer
+  lost-event workaround (erratum DT flag), `console=tty0`, GPT irq NULL deref fix
+- MT6392 charger: 900 mA, drops to 450 mA if VBUS sags; battery % from an OCV
+  table with I*R compensation; charge-only mode when powered on by the cable
+- Backlight (disp_pwm + mmsys clocks), simpledrm reported as a DSI connector
+- Touch: flashless Goodix GT912F at 0x5d (not Silead), via goodix fw upload
+- BMA253 accelerometer and rotation, cpufreq + thermal throttling, RTC
+- Audio: speaker (the external amp sits on the left headphone channel, mono
+  UCM), memif format fix, both volume keys
+- Wi-Fi and Bluetooth: Luca's consys drivers ported to 7.3 with stock firmware;
+  fixed a BT kthread busy loop and the firmware's empty LE command bitmap, so
+  BLE keyboards pair and reconnect
+- Phosh with a patched phrog greeter (first PIN attempt no longer fails)
 
-Early bring-up used naive Android boot image offsets (`--base 0x40000000`,
-`--second_offset 0x14000000`, etc.) copied from generic MediaTek examples.
-This **looked like** a kernel crash — device cycled through the MediaTek BROM
-USB ID (`idProduct=2000`) every ~2.7 seconds indefinitely — but the BROM cycle
-itself is normal (MediaTek's BROM always waits briefly for a flash tool before
-continuing the boot chain; see
-[mtkclient](https://github.com/bkerler/mtkclient)). The real bug was that the
-DTB was being loaded to the wrong physical address, so the kernel could never
-find its own device tree and silently died before doing anything observable.
+Not yet:
 
-MediaTek 64-bit bootloaders expect `base + 0x78000`, with that same `0x78000`
-subtracted back out of every other offset. The corrected values (confirmed
-against a sibling MT8167 Lenovo Tab E7 variant, the TB-7304F) are baked into
-`device/device-lenovo-tabe7/deviceinfo` and `scripts/pack-boot.sh`:
+- GPU (PowerVR GE8300 needs 32-bit MIPS bus support in `drm/imagination`)
+- USB OTG host mode: pulling up the IDDIG pin is right, but without VBUS
+  sensing `usb-conn-gpio` then reports `USB_ROLE_NONE` and the gadget never
+  binds (USB networking dies). Needs VBUS detection, e.g. from the charger.
+- Headphone jack detection, mediatek-drm instead of simpledrm
 
-```
-base:     0x40078000
-kernel:   0x00008000
-ramdisk:  0x14f88000
-second:   0x00e88000   (DTB)
-tags:     0x13f88000
-```
+### Firmware is not in this repository
 
-If you're porting a related MT8167/MT8516 Lenovo tablet and see an
-unchanging ~2.7s BROM USB cycle no matter what you change in your DTS or
-kernel config, check this first.
+`device/device-lenovo-tabe7/APKBUILD` expects these vendor files next to it;
+they are not redistributable here. Extract them from your own device's stock
+`vendor` image (Wi-Fi/BT, touch) or Imagination's linux-firmware fork (GPU):
+`WIFI_RAM_CODE_8167`, `WMT_SOC.cfg`, `ROMv2_lm_patch_1_0_hdr.bin`,
+`ROMv2_lm_patch_1_1_hdr.bin`, `gt912f-lenovo-tb7104f.fw`,
+`gt912f-lenovo-tb7104f.cfg`, `rogue_22.67.54.30_v1.fw`, `rogue_22.68.54.30_v1.fw`.
 
 ## Building
 
 Kernel is based on
-[Luca Leonardo Scorcia's `x04g-7.2-rc1` branch](https://github.com/lscorcia/linux/tree/x04g-7.2-rc1),
+Luca Leonardo Scorcia's `x04g` branch (7.3-rc5),
 which has working MT6392 PMIC, eMMC, SD, and USB support for MT8167 devices,
 plus this project's board-specific DTS and config fragment on top.
 
@@ -79,19 +71,34 @@ pmbootstrap install
 pmbootstrap flasher flash_kernel
 ```
 
+The packages in `device/` go into a pmaports checkout under
+`device/testing/`. Once a pmOS install is running, `scripts/flash-latest.sh`
+installs freshly built packages over ssh and writes the boot.img that
+the tablet itself just generated.
+
 Or cross-compile directly and pack with `scripts/pack-boot.sh` — see the
 comments in that script for required environment variables
 (`KBUILD`, `WORKDIR`, `MKBOOTIMG`, `PMOS_BOOT_UUID`, `PMOS_ROOT_UUID`).
 
 ## Flashing
 
-The TB-7104F ships with a locked bootloader (SBC + DAA enabled), so
-`fastboot flash` / `fastboot oem unlock` are not available. All flashing here
-goes through [mtkclient](https://github.com/bkerler/mtkclient), which bypasses
-this via the Kamakiri exploit chain automatically:
+The bootloader can be unlocked with `fastboot flashing unlock`; confirm with
+**Volume UP** on the tablet (Volume Down silently declines). After that,
+`fastboot flash boot boot.img` works. Two LK quirks:
+
+- LK only enumerates over USB if the cable is already plugged in when you
+  enter fastboot mode (Volume UP + Power, then `[Fastboot Mode]`).
+- LK fastboot can go mute (enumerates, every command times out), and charging
+  does not fix it. Fastboot mode does not charge the battery either.
+
+When fastboot is mute, [mtkclient](https://github.com/bkerler/mtkclient)
+still works through BROM: unplug the battery, hold Volume UP + Volume Down,
+plug in USB, reconnect the battery. "Detected regular mode" without "BROM mode
+detected" means retry. After the write the board stays in DA mode
+(`0e8d:2001`); run `mtk reset`, then unplug and reconnect the battery.
 
 ```sh
-python3 mtk.py w boot boot.img
+mtk w boot boot.img
 ```
 
 **Before you touch a locked device: back up every partition first.**

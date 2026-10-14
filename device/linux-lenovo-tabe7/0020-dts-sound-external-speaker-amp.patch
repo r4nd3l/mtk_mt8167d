@@ -1,0 +1,11 @@
+--- a/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
++++ b/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
+@@ -699,6 +699,8 @@
+ 		mediatek,platform = <&afe>;
+ 		mediatek,audio-codec = <&mt8167_audio_codec>;
+ 		mediatek,speaker-codec = <&mt6392_audio_codec>;
++		/* vendor "extamp" pin: external speaker amplifier enable */
++		ext-amp-gpios = <&pio 2 GPIO_ACTIVE_HIGH>;
+ 	};
+ };
+ 

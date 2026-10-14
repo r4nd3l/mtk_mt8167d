@@ -7,7 +7,7 @@ deviceinfo_manufacturer="Lenovo"
 deviceinfo_codename="lenovo-tabe7"
 deviceinfo_year="2018"
 deviceinfo_arch="aarch64"
-deviceinfo_dtb="mediatek/mt8167-lenovo-tabe7"
+deviceinfo_dtb="mediatek/mt8167-lenovo-tb7104f"
 
 # Device related
 deviceinfo_chassis="tablet"
@@ -16,8 +16,8 @@ deviceinfo_external_storage="true"
 deviceinfo_screen_width="1024"
 deviceinfo_screen_height="600"
 deviceinfo_gpu_accelerated="false"
-# on-device debug shell over USB while display isn't up yet
-deviceinfo_getty="ttyS0;921600"
+# No UART pads could be found on this board, so there is no serial getty.
+# The debug shell is reached over the USB gadget: telnet 172.16.42.1
 
 # Dense initramfs compression so the boot.img fits the 16 MB boot partition
 # (default gzip left it ~8.4 MB; lzma roughly halves that). Kernel has RD_LZMA=y.
@@ -31,9 +31,69 @@ deviceinfo_create_initfs_extra="true"
 
 # Bootloader related (MediaTek MT8167, Android boot.img via fastboot)
 deviceinfo_flash_method="fastboot"
-deviceinfo_kernel_cmdline="console=tty0 console=ttyS0,921600 console=ttyGS0 bootopt=64S3,32N2,32N2"
+# LK truncates the kernel cmdline at 109 characters, and pmbootstrap appends its
+# own pmos_boot_uuid / pmos_root_uuid / pmos_rootfsopts after this string, which
+# alone is longer than that. Those get cut, which is fine: the initramfs falls
+# back to finding the root partition by its "pmOS_root" label (see
+# find_root_partition() in init_functions.sh). What must survive the cut are the
+# three ignore_unused flags, so keep this string short and never reorder it.
+# Measured length: 81 characters, leaving some margin.
+#
+# loglevel and cpuidle are set in the kernel config instead of here, to save
+# room: CONFIG_CONSOLE_LOGLEVEL_DEFAULT=4 and CONFIG_CPU_IDLE=n.
+# There is no console= entry because this board has no reachable UART pads; the
+# debug shell comes up over the USB gadget (telnet 172.16.42.1).
+# The length of this string is load-bearing, do not shorten it.
+#
+# LK truncates the kernel cmdline at 109 characters, and pmbootstrap appends
+# "pmos_boot_uuid=<36 char uuid> pmos_root_uuid=<36> pmos_rootfsopts=..." after
+# whatever is here. At 81 characters the cut landed in the MIDDLE of the boot
+# uuid, so the kernel received
+#
+#   pmos_boot_uuid=c68e1d78-97d
+#
+# a truncated but non-empty value. find_partition() in init_functions.sh tries
+# blkid --uuid first and, if a uuid was given and not found, returns empty
+# without falling back to the label. So the boot partition was never found and
+# the initramfs called fail_halt_boot. The root uuid was cut away completely,
+# stayed empty, fell back to the "pmOS_root" label and was found, which is why
+# root worked and boot did not.
+#
+# At 95 characters the cut lands inside the key name ("pmos_boot_uui"), which
+# the parser ignores, so boot_uuid stays empty and the label lookup is used for
+# both partitions.
+#
+# cpuidle.off=1 also guards against the known MT8167 PSCI idle problem, so it is
+# not merely padding.
+# DIAGNOSTIC: pmos.debug-shell forces a shell in the SECOND stage, where we are
+# currently blind because the initramfs redirects its output to /pmOS_init.log.
+# 124 characters ON PURPOSE. LK cuts at 109, so softlockup_panic=1 is chopped to a bare
+# key (harmless, ignored) and NOTHING of the
+# pmos_boot_uuid/pmos_root_uuid that pmbootstrap appends gets through at all.
+#
+# That matters more than it sounds. A leftover fragment is dangerous twice over:
+#   81 chars -> "pmos_boot_uuid=c68e1d78-97d", a truncated but non-empty uuid,
+#               and find_partition() returns empty instead of trying the label
+#   98 chars -> "pmos_boot", which the parser accepts as a KEY, so boot_path
+#               becomes the literal string "pmos_boot" and the lookup fails again
+# LK also inserts an extra space, so the real cut lands one character earlier
+# than a naive count predicts. Leave margin, do not try to land it exactly.
+#
+# pmos.debug-shell was removed on 2026-10-06 once the installed system booted
+# from eMMC; the "second stage failure" was the gcc 15 kernel dying at 0.34 s.
+# console=tty0 must come AFTER LK's own "console=tty0 console=ttyMT0" prefix so the
+# last console= is the display again; otherwise /dev/console is a serial port nobody has.
+deviceinfo_kernel_cmdline="bootopt=64S3,32N2,64N2 pd_ignore_unused clk_ignore_unused regulator_ignore_unused loglevel=4 console=tty0 softlockup_panic=1"
 deviceinfo_generate_bootimg="true"
-deviceinfo_bootimg_dtb_second="true"
+# The DTB must be APPENDED to the kernel image, not placed in the boot image's
+# "second" area. This LK expects "Image.gz + DTB" in the kernel section and then
+# merges the odmdtbo overlay on top. A boot.img built with dtb_second=true shows
+# Orange State, a black screen and reboots about every 72 seconds, which is the
+# bootloader never finding a device tree.
+# Verified against the hand-built images that do boot: they all have
+# second_size = 0 and the DTB appended after the gzip stream.
+deviceinfo_append_dtb="true"
+deviceinfo_bootimg_dtb_second="false"
 deviceinfo_bootimg_mtk_label_kernel="KERNEL"
 deviceinfo_bootimg_mtk_label_ramdisk="ROOTFS"
 # NOTE: MediaTek 64-bit bootloaders require base+0x78000, with that same 0x78000
@@ -50,3 +110,6 @@ deviceinfo_flash_offset_second="0x00e88000"
 deviceinfo_flash_offset_tags="0x13f88000"
 deviceinfo_flash_pagesize="2048"
 deviceinfo_flash_fastboot_partition_kernel="boot"
+
+# The kernel ships only the lzo/lzo-rle zram backend; zstd is too heavy for this CPU anyway
+deviceinfo_zram_swap_algo="lzo-rle"

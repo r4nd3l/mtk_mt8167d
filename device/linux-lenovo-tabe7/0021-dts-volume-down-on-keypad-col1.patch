@@ -1,0 +1,33 @@
+--- a/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
++++ b/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
+@@ -108,7 +108,6 @@
+ 		>;
+ 		/* 5 is the lowest readable step; it keeps a 450 mA charger ahead of the display. */
+ 		default-brightness-level = <5>;
+-		enable-gpios = <&pio 43 GPIO_ACTIVE_HIGH>;
+ 		power-supply = <&mt6392_vio18_reg>;
+ 		pwms = <&disp_pwm 0 1000000>;
+ 	};
+@@ -360,7 +359,9 @@
+ 		pins_cols {
+ 			bias-pull-up = <MTK_PUPD_SET_R1R0_01>;
+ 			input-enable;
+-			pinmux = <MT8167_PIN_42_KPCOL0__FUNC_KPCOL0>;
++			/* stock kpd-hw-init-map: bit 0 = VOLUMEUP, bit 1 = VOLUMEDOWN */
++			pinmux = <MT8167_PIN_42_KPCOL0__FUNC_KPCOL0>,
++				 <MT8167_PIN_43_KPCOL1__FUNC_KPCOL1>;
+ 		};
+ 	};
+ 
+@@ -507,8 +508,9 @@
+ 	pinctrl-0 = <&keypad_pins>;
+ 
+ 	keypad,num-rows = <1>;
+-	keypad,num-columns = <1>;
+-	linux,keymap = <MATRIX_KEY(0x00, 0x00, KEY_VOLUMEUP)>;
++	keypad,num-columns = <2>;
++	linux,keymap = <MATRIX_KEY(0x00, 0x00, KEY_VOLUMEUP)
++			MATRIX_KEY(0x00, 0x01, KEY_VOLUMEDOWN)>;
+ 	mediatek,keys-per-group = <1>;
+ };
+ 

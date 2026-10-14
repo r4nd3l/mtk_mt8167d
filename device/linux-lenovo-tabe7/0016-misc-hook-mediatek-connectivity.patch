@@ -1,0 +1,19 @@
+diff -ruN a/drivers/misc/Kconfig b/drivers/misc/Kconfig
+--- a/drivers/misc/Kconfig	2026-09-29 18:44:59.000000000 +0200
++++ b/drivers/misc/Kconfig	2026-10-11 22:50:32.608197412 +0200
+@@ -579,6 +579,7 @@
+ source "drivers/misc/ocxl/Kconfig"
+ source "drivers/misc/bcm-vk/Kconfig"
+ source "drivers/misc/cardreader/Kconfig"
++source "drivers/misc/mediatek/Kconfig"
+ source "drivers/misc/uacce/Kconfig"
+ source "drivers/misc/pvpanic/Kconfig"
+ source "drivers/misc/mchp_pci1xxxx/Kconfig"
+diff -ruN a/drivers/misc/Makefile b/drivers/misc/Makefile
+--- a/drivers/misc/Makefile	2026-09-29 18:44:59.000000000 +0200
++++ b/drivers/misc/Makefile	2026-10-11 22:50:32.608197412 +0200
+@@ -71,3 +71,4 @@
+ obj-y				+= amd-sbi/
+ obj-$(CONFIG_MISC_RP1)		+= rp1/
+ obj-$(CONFIG_INTEL_SSEI)	+= issei/
++obj-$(CONFIG_MEDIATEK_SOLUTION)	+= mediatek/

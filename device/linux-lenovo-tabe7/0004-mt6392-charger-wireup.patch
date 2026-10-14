@@ -1,0 +1,41 @@
+diff --git a/drivers/mfd/mt6397-core.c b/drivers/mfd/mt6397-core.c
+index f284d3885..3c7c7df6b 100644
+--- a/drivers/mfd/mt6397-core.c
++++ b/drivers/mfd/mt6397-core.c
+@@ -220,6 +220,7 @@ static const struct mfd_cell mt6392_devs[] = {
+ 	MFD_CELL_OF("mt6392-pinctrl", NULL, NULL, 0, 0,
+ 		    "mediatek,mt6392-pinctrl"),
+ 	MFD_CELL_NAME("mt6392-regulator"),
++	MFD_CELL_NAME("mt6392-charger"),
+ 	MFD_CELL_OF("mt6392-rtc", mt6392_rtc_resources, NULL, 0, 0,
+ 		    "mediatek,mt6392-rtc"),
+ };
+diff --git a/drivers/power/supply/Kconfig b/drivers/power/supply/Kconfig
+index b89ef40df..5d8bafa18 100644
+--- a/drivers/power/supply/Kconfig
++++ b/drivers/power/supply/Kconfig
+@@ -1202,4 +1202,15 @@ config MACSMC_POWER
+ 
+ 	  Say Y or M here if you have an Apple Silicon based Mac.
+ 
++config CHARGER_MT6392
++	tristate "MediaTek MT6392 PMIC charger"
++	depends on MFD_MT6397 || COMPILE_TEST
++	depends on REGMAP
++	help
++	  Say Y to enable support for the battery charger integrated into the
++	  MediaTek MT6392 PMIC, as found on MT8167 devices such as the Lenovo
++	  Tab E7. The PMIC runs the constant-voltage loop in hardware; this
++	  driver programs the limits, enables the charge path and feeds the
++	  charger watchdog.
++
+ endif # POWER_SUPPLY
+diff --git a/drivers/power/supply/Makefile b/drivers/power/supply/Makefile
+index f3c0d1006..c079210fc 100644
+--- a/drivers/power/supply/Makefile
++++ b/drivers/power/supply/Makefile
+@@ -135,3 +135,4 @@ obj-$(CONFIG_CHARGER_QCOM_SMB2)	+= qcom_smbx.o
+ obj-$(CONFIG_FUEL_GAUGE_MM8013)	+= mm8013.o
+ obj-$(CONFIG_MACSMC_POWER)	+= macsmc-power.o
+ obj-$(CONFIG_CHARGER_MAX77759)	+= max77759_charger.o
++obj-$(CONFIG_CHARGER_MT6392)	+= mt6392_charger.o

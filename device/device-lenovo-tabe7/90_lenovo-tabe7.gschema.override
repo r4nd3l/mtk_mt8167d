@@ -1,0 +1,11 @@
+# Lenovo Tab E7 defaults for office use.
+[org.gnome.desktop.interface]
+color-scheme='prefer-dark'
+# no GPU driver yet (PowerVR GE8300): animations cost a lot of CPU
+enable-animations=false
+
+[org.gnome.settings-daemon.plugins.power]
+# suspend/resume is untested on this kernel and the charger watchdog needs a running CPU
+sleep-inactive-ac-type='nothing'
+sleep-inactive-battery-type='nothing'
+

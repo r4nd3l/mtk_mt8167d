@@ -1,0 +1,51 @@
+--- a/arch/arm64/boot/dts/mediatek/mt8167.dtsi
++++ b/arch/arm64/boot/dts/mediatek/mt8167.dtsi
+@@ -788,3 +788,38 @@
+ 		};
+ 	};
+ };
++
++/ {
++	soc {
++		mfgcfg: clock-controller@13ffe000 {
++			compatible = "mediatek,mt8167-mfgcfg";
++			reg = <0 0x13ffe000 0 0x1000>;
++			power-domains = <&spm MT8167_POWER_DOMAIN_MFG>;
++			#clock-cells = <1>;
++		};
++
++		/* PowerVR Rogue GE8300, BVNC 22.40.54.30 */
++		gpu: gpu@13000000 {
++			compatible = "mediatek,mt8167-gpu", "img,img-ge8300",
++				     "img,img-rogue";
++			reg = <0 0x13000000 0 0x80000>;
++			interrupts = <GIC_SPI 185 IRQ_TYPE_LEVEL_LOW>;
++			clocks = <&mfgcfg CLK_MFG_BG3D>,
++				 <&mfgcfg CLK_MFG_BMEM>,
++				 <&mfgcfg CLK_MFG_BAXI>;
++			clock-names = "core", "mem", "sys";
++			power-domains = <&spm MT8167_POWER_DOMAIN_MFG>;
++			/*
++			 * parents as set by the vendor mtk_mfgsys.c. ponytail: the vendor
++			 * also moves slow_mfg_sel to clk26m, but CLK_TOP_SLOW_MFG_SEL (219)
++			 * is past the end of the topckgen onecell table (clk-mtk sizes it
++			 * by clock count, MT8167 IDs have a gap), so it stays on univpll_d12.
++			 */
++			assigned-clocks = <&topckgen CLK_TOP_AXI_MFG_IN_SEL>,
++					  <&topckgen CLK_TOP_MFG_MM_SEL>;
++			assigned-clock-parents = <&topckgen CLK_TOP_MAINPLL_D11>,
++						 <&topckgen CLK_TOP_CSW_MUX_MFG_SEL>;
++			status = "disabled";
++		};
++	};
++};
+--- a/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
++++ b/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
+@@ -752,3 +752,7 @@
+ 		linux,keycodes = <KEY_VOLUMEDOWN>;
+ 	};
+ };
++
++&gpu {
++	status = "okay";
++};

@@ -1,0 +1,5 @@
+#!/sbin/openrc-run
+description="Power off cleanly before the battery runs flat"
+command=/usr/libexec/lowbat-poweroff
+command_background=true
+pidfile=/run/lowbat-poweroff.pid

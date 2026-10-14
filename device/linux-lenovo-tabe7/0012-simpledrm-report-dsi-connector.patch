@@ -1,0 +1,19 @@
+--- a/drivers/gpu/drm/sysfb/simpledrm.c	2026-09-29 18:44:59.000000000 +0200
++++ b/drivers/gpu/drm/sysfb/simpledrm.c	2026-10-11 02:04:28.963341253 +0200
+@@ -864,8 +864,15 @@
+ 	/* Connector */
+ 
+ 	connector = &sdev->connector;
++	/*
++	 * ponytail: report the boot framebuffer as a DSI panel. On the Lenovo
++	 * TB-7104F it is the built-in DSI panel, and compositors (phoc) only
++	 * map the touchscreen to outputs named DSI-/eDP-/LVDS-/DPI-, so with
++	 * "Unknown-1" touch input does not follow screen rotation. Drop this
++	 * once mtk-drm drives the panel.
++	 */
+ 	ret = drm_connector_init(dev, connector, &simpledrm_connector_funcs,
+-				 DRM_MODE_CONNECTOR_Unknown);
++				 DRM_MODE_CONNECTOR_DSI);
+ 	if (ret)
+ 		return ERR_PTR(ret);
+ 	drm_connector_helper_add(connector, &simpledrm_connector_helper_funcs);

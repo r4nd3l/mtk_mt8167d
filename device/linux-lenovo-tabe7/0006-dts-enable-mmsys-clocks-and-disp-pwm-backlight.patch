@@ -1,0 +1,26 @@
+--- a/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
++++ b/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
+@@ -159,7 +159,13 @@
+ 	proc-supply = <&mt6392_vproc_reg>;
+ };
+ 
+-&mmsys { status = "disabled"; };
++/*
++ * mmsys stays enabled for its clock provider only: disp_pwm needs
++ * CLK_MM_DISP_PWM_26M/MM and the MM power domain. The display pipeline
++ * (ovl0, rdma0, dsi, mipi_tx) stays disabled so mediatek-drm never binds
++ * and simpledrm keeps the LK-initialised panel.
++ */
++&mmsys { status = "okay"; };
+ &ovl0 { status = "disabled"; };
+ &rdma0 { status = "disabled"; };
+ &wdma {	status = "disabled"; };
+@@ -169,7 +175,7 @@
+ &dither { status = "disabled"; };
+ 
+ &disp_pwm {
+-	//status = "okay";
++	status = "okay";
+ };
+ 
+ &mipi_tx {
