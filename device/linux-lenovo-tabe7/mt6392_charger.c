@@ -147,14 +147,18 @@ static const struct { u16 mv; u8 pct; } mt6392_ocv[] = {
 };
 
 /*
- * Charging lifts the terminal voltage by I*R: measured +70 mV at 450 mA and
- * +155 mV at 900 mA, so about 170 mOhm. Scale with the programmed current.
- * ponytail: programmed, not measured current; overcorrects in the CV taper.
+ * Charging lifts the terminal voltage by I*R (about 170 mOhm), but the real
+ * current is unknown: a weak adapter or a PC port delivers far less than
+ * programmed, and the old cc_ua * R correction read 3.75 V as 2 %. So while
+ * charging, pause the charge path briefly once a minute and sample the
+ * battery unloaded by the charger.
+ * ponytail: 1 s pause is not a full OCV relaxation; a coulomb counter would
+ * replace this.
  */
-#define MT6392_CHG_IR_UV_PER_MA	170
-#define MT6392_CHG_IR_COMP_UV(chg)	((chg)->cc_ua / 1000 * MT6392_CHG_IR_UV_PER_MA)
-/* "Full" once the smoothed reading sits this close to CV while charging. */
-#define MT6392_FULL_MARGIN_UV	20000
+#define MT6392_PAUSE_MS		1000
+#define MT6392_PAUSE_EVERY	30	/* watchdog ticks, 2 s each */
+/* "Full" once the paused reading sits this close to CV. */
+#define MT6392_FULL_MARGIN_UV	50000
 
 struct mt6392_charger {
 	struct device *dev;
@@ -167,8 +171,10 @@ struct mt6392_charger {
 	struct mutex lock;	/* enabled + charge path writes */
 	u32 cv_uv;
 	u32 cc_ua;
-	bool enabled;
+	bool enabled;		/* charge path is on right now */
+	bool user_off;		/* userspace wrote STATUS=Not charging */
 	bool was_online;
+	unsigned int ticks;
 };
 
 static void mt6392_battery_sample(struct mt6392_charger *chg);
@@ -278,7 +284,7 @@ static int mt6392_charger_set_limits(struct mt6392_charger *chg)
 		return cc;
 	}
 
-	dev_info(chg->dev, "CV %u uV (step %d), current %u uA (step %d)\n",
+	dev_dbg(chg->dev, "CV %u uV (step %d), current %u uA (step %d)\n",
 		 mt6392_cv_table[cv], cv, mt6392_cc_table[cc], cc);
 
 	ret = regmap_update_bits(chg->regmap, MT6392_CHR_CON3,
@@ -303,6 +309,61 @@ static void mt6392_charger_hw_disable(struct mt6392_charger *chg)
 	chg->enabled = false;
 }
 
+/*
+ * Charge path on. Caller holds chg->lock. Also used on every plug-in: the
+ * PMIC clears CHR_EN, CSDAC_EN, CS_EN, VBAT_CV_EN and CS_VTH by itself when
+ * VBUS goes away (measured 10-15), so nothing flows after a replug unless the
+ * whole sequence runs again.
+ */
+static int mt6392_charger_hw_enable(struct mt6392_charger *chg)
+{
+	int ret;
+
+	/* Limits first, so the charge path never comes up unconfigured. */
+	ret = mt6392_charger_set_limits(chg);
+	if (ret)
+		return ret;
+
+	/* Current-source DAC slew settings, values from the vendor driver. */
+	ret = regmap_update_bits(chg->regmap, MT6392_CHR_CON21,
+				 MT6392_CSDAC_DLY | MT6392_CSDAC_STP,
+				 FIELD_PREP(MT6392_CSDAC_DLY, 0x4) |
+				 FIELD_PREP(MT6392_CSDAC_STP, 0x1));
+	if (ret)
+		return ret;
+	ret = regmap_update_bits(chg->regmap, MT6392_CHR_CON20,
+				 MT6392_CSDAC_STP_INC | MT6392_CSDAC_STP_DEC,
+				 FIELD_PREP(MT6392_CSDAC_STP_INC, 0x1) |
+				 FIELD_PREP(MT6392_CSDAC_STP_DEC, 0x2));
+	if (ret)
+		return ret;
+
+	ret = regmap_update_bits(chg->regmap, MT6392_CHR_CON2,
+				 MT6392_CS_EN | MT6392_VBAT_CV_EN,
+				 MT6392_CS_EN | MT6392_VBAT_CV_EN);
+	if (ret)
+		return ret;
+
+	/* Hardware constant-voltage loop. Must be on before the charge path. */
+	ret = regmap_update_bits(chg->regmap, MT6392_CHR_CON23,
+				 MT6392_HWCV_EN, MT6392_HWCV_EN);
+	if (ret)
+		return ret;
+
+	ret = mt6392_charger_kick_wdt(chg);
+	if (ret)
+		return ret;
+
+	ret = regmap_update_bits(chg->regmap, MT6392_CHR_CON0,
+				 MT6392_VCDT_HV_EN | MT6392_CSDAC_EN | MT6392_CHR_EN,
+				 MT6392_VCDT_HV_EN | MT6392_CSDAC_EN | MT6392_CHR_EN);
+	if (ret)
+		return ret;
+
+	chg->enabled = true;
+	return 0;
+}
+
 static int mt6392_charger_enable(struct mt6392_charger *chg, bool enable)
 {
 	int ret;
@@ -311,59 +372,18 @@ static int mt6392_charger_enable(struct mt6392_charger *chg, bool enable)
 		/* Never called from the watchdog work: that path uses hw_disable. */
 		cancel_delayed_work_sync(&chg->wdt_work);
 		mutex_lock(&chg->lock);
+		chg->user_off = true;
 		mt6392_charger_hw_disable(chg);
 		mutex_unlock(&chg->lock);
+		/* keep polling so the battery reading stays fresh */
+		schedule_delayed_work(&chg->wdt_work, msecs_to_jiffies(MT6392_WDT_KICK_MS));
 		return 0;
 	}
 	mutex_lock(&chg->lock);
-
-	/* Limits first, so the charge path never comes up unconfigured. */
-	ret = mt6392_charger_set_limits(chg);
-	if (ret)
-		goto unlock;
-
-	/* Current-source DAC slew settings, values from the vendor driver. */
-	ret = regmap_update_bits(chg->regmap, MT6392_CHR_CON21,
-				 MT6392_CSDAC_DLY | MT6392_CSDAC_STP,
-				 FIELD_PREP(MT6392_CSDAC_DLY, 0x4) |
-				 FIELD_PREP(MT6392_CSDAC_STP, 0x1));
-	if (ret)
-		goto unlock;
-	ret = regmap_update_bits(chg->regmap, MT6392_CHR_CON20,
-				 MT6392_CSDAC_STP_INC | MT6392_CSDAC_STP_DEC,
-				 FIELD_PREP(MT6392_CSDAC_STP_INC, 0x1) |
-				 FIELD_PREP(MT6392_CSDAC_STP_DEC, 0x2));
-	if (ret)
-		goto unlock;
-
-	ret = regmap_update_bits(chg->regmap, MT6392_CHR_CON2,
-				 MT6392_CS_EN | MT6392_VBAT_CV_EN,
-				 MT6392_CS_EN | MT6392_VBAT_CV_EN);
-	if (ret)
-		goto unlock;
-
-	/* Hardware constant-voltage loop. Must be on before the charge path. */
-	ret = regmap_update_bits(chg->regmap, MT6392_CHR_CON23,
-				 MT6392_HWCV_EN, MT6392_HWCV_EN);
-	if (ret)
-		goto unlock;
-
-	ret = mt6392_charger_kick_wdt(chg);
-	if (ret)
-		goto unlock;
-
-	ret = regmap_update_bits(chg->regmap, MT6392_CHR_CON0,
-				 MT6392_VCDT_HV_EN | MT6392_CSDAC_EN | MT6392_CHR_EN,
-				 MT6392_VCDT_HV_EN | MT6392_CSDAC_EN | MT6392_CHR_EN);
-	if (ret)
-		goto unlock;
-
-	chg->enabled = true;
+	chg->user_off = false;
+	ret = mt6392_charger_hw_enable(chg);
+	mutex_unlock(&chg->lock);
 	schedule_delayed_work(&chg->wdt_work, msecs_to_jiffies(MT6392_WDT_KICK_MS));
-	mutex_unlock(&chg->lock);
-	return 0;
-unlock:
-	mutex_unlock(&chg->lock);
 	return ret;
 }
 
@@ -383,8 +403,14 @@ static void mt6392_charger_check_vbus(struct mt6392_charger *chg)
 
 	mutex_lock(&chg->lock);
 	if (!online && chg->was_online) {
+		/* the PMIC dropped the charge path itself */
+		chg->enabled = false;
 		chg->cc_ua = MT6392_CC_MAX_UA;
-		mt6392_charger_set_limits(chg);
+	} else if (online && !chg->was_online && !chg->user_off) {
+		if (mt6392_charger_hw_enable(chg))
+			dev_warn(chg->dev, "re-enabling charging after plug-in failed\n");
+		else
+			dev_info(chg->dev, "charger plugged in, charging\n");
 	} else if (online && chg->enabled && chg->cc_ua > MT6392_CC_SAFE_UA &&
 		   (val & (MT6392_VCDT_LV_DET | MT6392_CHR_LDO_DET)) !=
 		   (MT6392_VCDT_LV_DET | MT6392_CHR_LDO_DET)) {
@@ -393,6 +419,8 @@ static void mt6392_charger_check_vbus(struct mt6392_charger *chg)
 		chg->cc_ua = MT6392_CC_SAFE_UA;
 		mt6392_charger_set_limits(chg);
 	}
+	if (online != chg->was_online && chg->bat)
+		power_supply_changed(chg->bat);
 	chg->was_online = online;
 	mutex_unlock(&chg->lock);
 }
@@ -476,14 +504,33 @@ static bool mt6392_charging(struct mt6392_charger *chg)
 /* Runs every watchdog tick (4 s): smooth VBAT, notify on capacity change. */
 static void mt6392_battery_sample(struct mt6392_charger *chg)
 {
-	int uv, cap;
+	int uv, cap, ret;
 
-	if (!chg->bat || mt6392_charger_read_vbat(chg, &uv))
+	if (!chg->bat)
 		return;
-	if (mt6392_charging(chg))
-		uv -= MT6392_CHG_IR_COMP_UV(chg);
-	/* 1/8 weight: ~30 s time constant, flattens load spikes */
-	chg->vbat_avg_uv = chg->vbat_avg_uv ? chg->vbat_avg_uv + (uv - chg->vbat_avg_uv) / 8 : uv;
+	if (mt6392_charging(chg)) {
+		/* Loaded readings are useless; only take the paused one. */
+		if (chg->vbat_avg_uv && chg->ticks++ % MT6392_PAUSE_EVERY)
+			return;
+		mutex_lock(&chg->lock);
+		regmap_update_bits(chg->regmap, MT6392_CHR_CON0,
+				   MT6392_CSDAC_EN | MT6392_CHR_EN, 0);
+		msleep(MT6392_PAUSE_MS);
+		ret = mt6392_charger_read_vbat(chg, &uv);
+		if (mt6392_charger_hw_enable(chg))
+			dev_warn(chg->dev, "re-enabling charging after sample failed\n");
+		mutex_unlock(&chg->lock);
+		if (ret)
+			return;
+		/* one sample a minute: take it nearly as is */
+		chg->vbat_avg_uv = chg->vbat_avg_uv ? (chg->vbat_avg_uv + 3 * uv) / 4 : uv;
+	} else {
+		chg->ticks = 0;
+		if (mt6392_charger_read_vbat(chg, &uv))
+			return;
+		/* 1/8 weight: ~16 s time constant, flattens load spikes */
+		chg->vbat_avg_uv = chg->vbat_avg_uv ? chg->vbat_avg_uv + (uv - chg->vbat_avg_uv) / 8 : uv;
+	}
 
 	cap = mt6392_ocv_to_capacity(chg->vbat_avg_uv);
 	if (cap != chg->last_capacity) {
@@ -515,8 +562,7 @@ static int mt6392_battery_get_property(struct power_supply *psy,
 			val->intval = POWER_SUPPLY_STATUS_DISCHARGING;
 		else if (!chg->enabled)
 			val->intval = POWER_SUPPLY_STATUS_NOT_CHARGING;
-		else if (chg->vbat_avg_uv + MT6392_CHG_IR_COMP_UV(chg) >=
-			 chg->cv_uv - MT6392_FULL_MARGIN_UV)
+		else if (chg->vbat_avg_uv >= chg->cv_uv - MT6392_FULL_MARGIN_UV)
 			val->intval = POWER_SUPPLY_STATUS_FULL;
 		else
 			val->intval = POWER_SUPPLY_STATUS_CHARGING;
@@ -740,7 +786,11 @@ static void mt6392_charger_remove(struct platform_device *pdev)
 {
 	struct mt6392_charger *chg = platform_get_drvdata(pdev);
 
-	mt6392_charger_enable(chg, false);
+	/* not mt6392_charger_enable(): that re-arms the work */
+	cancel_delayed_work_sync(&chg->wdt_work);
+	mutex_lock(&chg->lock);
+	mt6392_charger_hw_disable(chg);
+	mutex_unlock(&chg->lock);
 }
 
 static const struct platform_device_id mt6392_charger_id[] = {

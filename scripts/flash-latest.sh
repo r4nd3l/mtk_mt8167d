@@ -4,7 +4,7 @@
 set -e
 P=~/.local/var/pmbootstrap
 A=$P/packages/edge/aarch64
-T=user@172.16.42.1
+T=${T:-user@172.16.42.1}  # T=tabe7-wifi for the Wi-Fi fallback
 pick() { ls -v $A/$1-[0-9]*.apk | tail -1; }
 F="$(pick linux-lenovo-tabe7) $(pick device-lenovo-tabe7) $(pick device-lenovo-tabe7-nonfree-firmware) $(pick openmttools)"
 echo "$F" | tr ' ' '\n'

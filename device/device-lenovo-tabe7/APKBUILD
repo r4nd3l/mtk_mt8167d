@@ -2,13 +2,15 @@
 pkgname=device-lenovo-tabe7
 pkgdesc="Lenovo Tab E7 (TB-7104F)"
 pkgver=0.1
-pkgrel=27
+pkgrel=30
 url="https://postmarketos.org"
 license="MIT"
 arch="aarch64"
 options="!check !archcheck !strip"
 install="$pkgname.post-install $pkgname.post-upgrade"
 depends="
+	avahi
+	postmarketos-config-nftables-mdns
 	linux-lenovo-tabe7
 	mkbootimg
 	mtk-mkimage
@@ -116,7 +118,7 @@ ff4b0c3910359909f863c6cbf5c46b0ba54f84e6a3cd591517a138db6fedba57c43998bc461d7957
 1af76df2f654a81e32d3bee2a354630231fafffd588c7f2edc832ae183e378fae3b865c5da2232c78997f366b16f4c83eaf78041eba54ce39ecb6e449550d588  backlight-follow-dpms
 fd2bdd4160d22da5557de1c5e40742548d44617741bcddba1935461923db69098cab85e291c54863d062012f61267afcbdaf3af64eb99bc693b08b5b93c4850f  backlight-follow-dpms.initd
 1b73adb13fb41063e0c64dc23e1efb22acf6c3b5b2cd024476f2e475a8bac947eee7729875eb3fbc319a1da8667f14325ab02636730584ac8f92ec09d980937c  mtk-wifi.initd
-a1b09b1f242f3eab9891c4e189fcedb230fdf72af4da00263bfca53237100eb97cc77598db909c71d42adfd7cb530a6d68dc8289ea7b2bb8a1bc5987e9763442  90-lenovo-tabe7-wifi-mac.conf
+04c095fcb9c99ed6cc3939745e2cf50b770ad5e2a86e6a4235cb15e05ad299d01ba15cdbd8940b645097455e271d8d8678b3a73529a70b3c0c13ca27bf3ff82d  90-lenovo-tabe7-wifi-mac.conf
 a288dba84dbd54f4b0e803458cfe3b36eb0b791b27f2a95dc6df0c48553bfa891ef0c8f1eee406e0efb8cece29fe1184636c7a14b0af4c382379e2249455dc4b  ucm-mt8167-mt6392.conf
 d6105287cb38ac522c74118bdb199208c0921f0aa5f708725d187a20db94242bc1848155d6e831a41cf0984cb53910a0eb1836b82f05ec6e455901e70b92f656  ucm-HiFi.conf
 8bdfd60bd037e98d5bc95fc8f8bdeb60337b1b97f475cfc61cbaef7b53e441150637d3de81bd5f8ea2a7d1351d6da433f38904bae11577bfefc2fd962917e361  powervr-modprobe.conf

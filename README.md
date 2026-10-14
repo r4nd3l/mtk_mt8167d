@@ -25,8 +25,10 @@ Working:
 
 - Reliable boot from eMMC: pwrap `OP_TYPE`/`MSB_FIRST` fix, arch timer
   lost-event workaround (erratum DT flag), `console=tty0`, GPT irq NULL deref fix
-- MT6392 charger: 900 mA, drops to 450 mA if VBUS sags; battery % from an OCV
-  table with I*R compensation; charge-only mode when powered on by the cable
+- MT6392 charger: 900 mA, drops to 450 mA if VBUS sags; re-arms the charge
+  path on every plug-in (the PMIC clears it on unplug); battery % from an OCV
+  table, sampled during a 1 s charge pause once a minute while charging;
+  charge-only mode when powered on by the cable
 - Backlight (disp_pwm + mmsys clocks), simpledrm reported as a DSI connector
 - Touch: flashless Goodix GT912F at 0x5d (not Silead), via goodix fw upload
 - BMA253 accelerometer and rotation, cpufreq + thermal throttling, RTC
@@ -34,7 +36,9 @@ Working:
   UCM), memif format fix, both volume keys
 - Wi-Fi and Bluetooth: Luca's consys drivers ported to 7.3 with stock firmware;
   fixed a BT kthread busy loop and the firmware's empty LE command bitmap, so
-  BLE keyboards pair and reconnect
+  BLE keyboards pair and reconnect. The driver makes up a new MAC every boot,
+  so reach the tablet as `lenovo-tabe7.local` (avahi)
+- nftables firewall (needs `CONFIG_IPV6` for the inet table)
 - Phosh with a patched phrog greeter (first PIN attempt no longer fails)
 
 Not yet:
@@ -74,7 +78,7 @@ pmbootstrap flasher flash_kernel
 The packages in `device/` go into a pmaports checkout under
 `device/testing/`. Once a pmOS install is running, `scripts/flash-latest.sh`
 installs freshly built packages over ssh and writes the boot.img that
-the tablet itself just generated.
+the tablet itself just generated (`T=<ssh host>` to use Wi-Fi instead of USB).
 
 Or cross-compile directly and pack with `scripts/pack-boot.sh` — see the
 comments in that script for required environment variables
