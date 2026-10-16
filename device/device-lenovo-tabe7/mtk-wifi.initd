@@ -15,7 +15,7 @@ depend() {
 # offset 0 of BT_Addr. That data lived in the old Android userdata, so without
 # these files Wi-Fi makes up a new MAC every boot (00:08:22 + jiffies) and BT
 # uses the MTK default 00:00:46:81:67:01. Short files carry only the address;
-# the drivers keep their defaults for everything else (BT needs linux r45+).
+# the drivers keep their defaults for everything else (BT needs linux r45+; flash-latest.sh installs both together).
 # Addresses are locally administered (02:...) and derived from the SoC's
 # unique ID in efuse, so a reinstall gives the same ones.
 # ponytail: efuse offset 0x140 assumed unique per chip; random if it is empty.
