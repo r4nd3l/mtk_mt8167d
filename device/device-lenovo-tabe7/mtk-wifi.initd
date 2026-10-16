@@ -10,8 +10,36 @@ depend() {
 	before NetworkManager networkmanager
 }
 
+# The connsys drivers read their addresses from the vendor NVRAM records
+# through request_firmware(): Wi-Fi at offset 4 of the WIFI record, BT at
+# offset 0 of BT_Addr. That data lived in the old Android userdata, so without
+# these files Wi-Fi makes up a new MAC every boot (00:08:22 + jiffies) and BT
+# uses the MTK default 00:00:46:81:67:01. Short files carry only the address;
+# the drivers keep their defaults for everything else (BT needs linux r45+).
+# Addresses are locally administered (02:...) and derived from the SoC's
+# unique ID in efuse, so a reinstall gives the same ones.
+# ponytail: efuse offset 0x140 assumed unique per chip; random if it is empty.
+NVRAM=/lib/firmware/data/nvram/APCFG/APRDEB
+
+mac_tail() {
+	id=$(od -An -tx1 -j 320 -N 8 /sys/bus/nvmem/devices/nvmem0/nvmem 2>/dev/null | tr -d ' \n')
+	case "$id" in
+	""|0000000000000000) od -An -tx1 -N 5 /dev/urandom | tr -d ' \n' ;;
+	*) printf '%s-%s' "$id" "$1" | sha256sum | cut -c1-10 ;;
+	esac
+}
+
+# $1 file, $2 label for the hash, $3 bytes before the address (printf escapes)
+nvram_addr() {
+	[ -s "$1" ] && return 0
+	mkdir -p "${1%/*}"
+	printf "$3\\002$(mac_tail "$2" | sed 's/../\\x&/g')" > "$1"
+}
+
 start() {
 	ebegin "Starting MediaTek connsys"
+	nvram_addr $NVRAM/WIFI WLAN '\0\0\0\0'
+	nvram_addr $NVRAM/BT_Addr BT ''
 	for m in btif mtk_wmt_detect mtk_stp_wmt_soc wmt_chrdev_wifi wlan_gen2 stp_chrdev_bt; do
 		modprobe "$m" || { eend 1 "modprobe $m failed"; return 1; }
 	done
@@ -22,8 +50,14 @@ start() {
 	i=0
 	while [ ! -e /dev/wmtWifi ] && [ $i -lt 20 ]; do sleep 0.5; i=$((i + 1)); done
 	[ -e /dev/wmtWifi ] || { eend 1 "/dev/wmtWifi did not appear"; return 1; }
-	echo 1 > /dev/wmtWifi
-	eend $?
+	# right after mtinit the WMT core may still refuse with EIO; retry
+	i=0
+	until echo 1 2>/dev/null > /dev/wmtWifi; do
+		i=$((i + 1))
+		[ $i -ge 10 ] && { eend 1 "turning Wi-Fi on failed"; return 1; }
+		sleep 1
+	done
+	eend 0
 }
 
 stop() {

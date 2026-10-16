@@ -132,41 +132,68 @@ static const u32 mt6392_cc_table[] = {
 };
 
 /*
- * Open-circuit voltage (mV) against state of charge (%), from the vendor
- * battery profile at 25 C (p98995_bsp_bat_setting.dtsi, battery_profile_t2,
- * capacity = 100 - depth of discharge). The pack is a 4.35 V cell.
+ * Battery model from the vendor profile at 25 C (p98995_bsp_bat_setting.dtsi,
+ * the 2787 mAh pack): open-circuit voltage against depth of discharge
+ * (battery_profile_t2) and cell resistance against OCV (r_profile_t2).
+ * The pack is a 4.35 V cell.
  */
-static const struct { u16 mv; u8 pct; } mt6392_ocv[] = {
-	{ 4379, 100 }, { 4334, 96 }, { 4291, 93 }, { 4248, 89 }, { 4207, 86 },
-	{ 4166, 82 }, { 4126, 78 }, { 4088, 75 }, { 4055, 71 }, { 4015, 68 },
-	{ 3982, 64 }, { 3955, 61 }, { 3915, 57 }, { 3879, 53 }, { 3856, 50 },
-	{ 3837, 46 }, { 3822, 43 }, { 3808, 39 }, { 3797, 35 }, { 3787, 32 },
-	{ 3777, 28 }, { 3765, 25 }, { 3751, 21 }, { 3738, 18 }, { 3718, 14 },
-	{ 3695, 10 }, { 3690, 7 }, { 3645, 3 }, { 3569, 2 }, { 3488, 1 },
-	{ 3400, 0 },
+static const struct { u16 mv; u8 dod; } mt6392_ocv[] = {
+	{ 4379, 0 }, { 4355, 2 }, { 4334, 4 }, { 4312, 5 }, { 4291, 7 },
+	{ 4270, 9 }, { 4248, 11 }, { 4227, 13 }, { 4207, 14 }, { 4186, 16 },
+	{ 4166, 18 }, { 4146, 20 }, { 4126, 22 }, { 4107, 23 }, { 4088, 25 },
+	{ 4072, 27 }, { 4055, 29 }, { 4034, 30 }, { 4015, 32 }, { 3997, 34 },
+	{ 3982, 36 }, { 3968, 38 }, { 3955, 39 }, { 3937, 41 }, { 3915, 43 },
+	{ 3896, 45 }, { 3879, 47 }, { 3867, 48 }, { 3856, 50 }, { 3847, 52 },
+	{ 3837, 54 }, { 3829, 56 }, { 3822, 57 }, { 3815, 59 }, { 3808, 61 },
+	{ 3802, 63 }, { 3797, 65 }, { 3791, 66 }, { 3787, 68 }, { 3782, 70 },
+	{ 3777, 72 }, { 3771, 74 }, { 3765, 75 }, { 3757, 77 }, { 3751, 79 },
+	{ 3745, 81 }, { 3738, 82 }, { 3728, 84 }, { 3718, 86 }, { 3707, 88 },
+	{ 3695, 90 }, { 3692, 91 }, { 3690, 93 }, { 3684, 95 }, { 3645, 97 },
+	{ 3569, 98 }, { 3488, 99 }, { 3400, 100 },
 };
 
+static const struct { u16 mv; u16 mohm; } mt6392_rbat[] = {
+	{ 4379, 138 }, { 4355, 138 }, { 4334, 140 }, { 4312, 138 }, { 4291, 140 },
+	{ 4270, 140 }, { 4248, 140 }, { 4227, 142 }, { 4207, 142 }, { 4186, 142 },
+	{ 4166, 147 }, { 4146, 147 }, { 4126, 148 }, { 4107, 152 }, { 4088, 152 },
+	{ 4072, 155 }, { 4055, 160 }, { 4034, 163 }, { 4015, 167 }, { 3997, 165 },
+	{ 3982, 167 }, { 3968, 168 }, { 3955, 167 }, { 3937, 162 }, { 3915, 148 },
+	{ 3896, 140 }, { 3879, 133 }, { 3867, 135 }, { 3856, 135 }, { 3847, 137 },
+	{ 3837, 135 }, { 3829, 138 }, { 3822, 140 }, { 3815, 142 }, { 3808, 143 },
+	{ 3802, 145 }, { 3797, 148 }, { 3791, 148 }, { 3787, 152 }, { 3782, 150 },
+	{ 3777, 150 }, { 3771, 148 }, { 3765, 147 }, { 3757, 143 }, { 3751, 147 },
+	{ 3745, 148 }, { 3738, 150 }, { 3728, 150 }, { 3718, 153 }, { 3707, 157 },
+	{ 3695, 155 }, { 3692, 160 }, { 3690, 173 }, { 3684, 192 }, { 3639, 190 },
+	{ 3541, 207 }, { 3480, 217 }, { 3400, 237 },
+};
+
+#define MT6392_QMAX_MAH		2787	/* vendor q_max_pos_25 */
 /*
- * Charging lifts the terminal voltage by I*R (about 170 mOhm), but the real
- * current is unknown: a weak adapter or a PC port delivers far less than
- * programmed, and the old cc_ua * R correction read 3.75 V as 2 %. So while
- * charging, pause the charge path briefly once a minute and sample the
- * battery unloaded by the charger.
- * ponytail: 1 s pause is not a full OCV relaxation; a coulomb counter would
- * replace this.
+ * Board and connector resistance on top of the cell's: measured ~170 mOhm
+ * total at mid charge against ~140 in r_profile_t2.
+ * ponytail: one fixed value; calibrate here if the estimate drifts.
  */
-#define MT6392_PAUSE_MS		1000
-#define MT6392_PAUSE_EVERY	30	/* watchdog ticks, 2 s each */
-/* "Full" once the paused reading sits this close to CV. */
-#define MT6392_FULL_MARGIN_UV	50000
+#define MT6392_R_BOARD_MOHM	30
+/* The shown percentage moves at most 1 % per this long, like the vendor D5. */
+#define MT6392_UI_STEP_MS	60000
+/* Longest gap integrated as one step (suspend, stalled work). */
+#define MT6392_MAX_DT_MS	10000
+/* "Full": in CV, within this of the CV setpoint, estimated current below. */
+#define MT6392_FULL_MARGIN_MV	30
+#define MT6392_FULL_CURRENT_MA	60
 
 struct mt6392_charger {
 	struct device *dev;
 	struct regmap *regmap;
 	struct power_supply *psy;
 	struct power_supply *bat;
-	int vbat_avg_uv;	/* exponential average, 0 = no sample yet */
-	int last_capacity;
+	int vbat_avg_uv;	/* exponential average, for VOLTAGE_AVG */
+	/* SW gauge state (vendor "OAM"): charge left, estimated current, shown % */
+	int charge_uah;
+	int current_ma;		/* estimated, > 0 = discharging */
+	int ui_soc;
+	unsigned long last_jiffies;
+	unsigned int ui_ms;
 	struct delayed_work wdt_work;
 	struct mutex lock;	/* enabled + charge path writes */
 	u32 cv_uv;
@@ -174,7 +201,6 @@ struct mt6392_charger {
 	bool enabled;		/* charge path is on right now */
 	bool user_off;		/* userspace wrote STATUS=Not charging */
 	bool was_online;
-	unsigned int ticks;
 };
 
 static void mt6392_battery_sample(struct mt6392_charger *chg);
@@ -475,23 +501,66 @@ static int mt6392_charger_read_vbat(struct mt6392_charger *chg, int *uv)
 	return -ETIMEDOUT;
 }
 
-/* Linear interpolation in the OCV table. ponytail: no temperature or ageing
- * compensation; a coulomb counter would replace this. */
-static int mt6392_ocv_to_capacity(int uv)
+/* Charge left (uAh) for an open-circuit voltage, by the OCV table. */
+static int mt6392_ocv_to_uah(int mv)
 {
-	int mv = uv / 1000, i;
+	int i, dod_x100;
 
 	if (mv >= mt6392_ocv[0].mv)
-		return 100;
+		return MT6392_QMAX_MAH * 1000;
 	for (i = 1; i < ARRAY_SIZE(mt6392_ocv); i++) {
 		if (mv >= mt6392_ocv[i].mv) {
 			int hi = mt6392_ocv[i - 1].mv, lo = mt6392_ocv[i].mv;
-			int phi = mt6392_ocv[i - 1].pct, plo = mt6392_ocv[i].pct;
+			int dhi = mt6392_ocv[i - 1].dod, dlo = mt6392_ocv[i].dod;
 
-			return plo + (mv - lo) * (phi - plo) / (hi - lo);
+			dod_x100 = dlo * 100 - (mv - lo) * (dlo - dhi) * 100 / (hi - lo);
+			return MT6392_QMAX_MAH * (10000 - dod_x100) / 10;
 		}
 	}
 	return 0;
+}
+
+/* Open-circuit voltage (mV) the model expects at this charge. */
+static int mt6392_uah_to_ocv(int uah)
+{
+	int dod_x100 = 10000 - (int)div_s64((s64)uah * 10000, MT6392_QMAX_MAH * 1000);
+	int i;
+
+	for (i = 1; i < ARRAY_SIZE(mt6392_ocv); i++) {
+		if (dod_x100 <= mt6392_ocv[i].dod * 100) {
+			int dhi = mt6392_ocv[i - 1].dod * 100, dlo = mt6392_ocv[i].dod * 100;
+			int hi = mt6392_ocv[i - 1].mv, lo = mt6392_ocv[i].mv;
+
+			return hi - (dod_x100 - dhi) * (hi - lo) / (dlo - dhi);
+		}
+	}
+	return mt6392_ocv[ARRAY_SIZE(mt6392_ocv) - 1].mv;
+}
+
+/* Cell plus board resistance (mOhm) at this open-circuit voltage. */
+static int mt6392_rbat_mohm(int mv)
+{
+	int i, r = mt6392_rbat[ARRAY_SIZE(mt6392_rbat) - 1].mohm;
+
+	if (mv >= mt6392_rbat[0].mv) {
+		r = mt6392_rbat[0].mohm;
+	} else {
+		for (i = 1; i < ARRAY_SIZE(mt6392_rbat); i++) {
+			if (mv >= mt6392_rbat[i].mv) {
+				int hi = mt6392_rbat[i - 1].mv, lo = mt6392_rbat[i].mv;
+				int rhi = mt6392_rbat[i - 1].mohm, rlo = mt6392_rbat[i].mohm;
+
+				r = rlo + (mv - lo) * (rhi - rlo) / (hi - lo);
+				break;
+			}
+		}
+	}
+	return r + MT6392_R_BOARD_MOHM;
+}
+
+static int mt6392_uah_to_soc(int uah)
+{
+	return DIV_ROUND_CLOSEST(uah / 10, MT6392_QMAX_MAH);
 }
 
 static bool mt6392_charging(struct mt6392_charger *chg)
@@ -501,42 +570,91 @@ static bool mt6392_charging(struct mt6392_charger *chg)
 	return chg->enabled && !mt6392_charger_online(chg, &online) && online;
 }
 
-/* Runs every watchdog tick (4 s): smooth VBAT, notify on capacity change. */
+static bool mt6392_full(struct mt6392_charger *chg)
+{
+	return mt6392_charging(chg) &&
+	       chg->vbat_avg_uv / 1000 >= chg->cv_uv / 1000 - MT6392_FULL_MARGIN_MV &&
+	       -chg->current_ma < MT6392_FULL_CURRENT_MA;
+}
+
+/* Average of a few conversions; the vendor gauge takes 15. */
+static int mt6392_read_vbat_avg(struct mt6392_charger *chg, int *uv)
+{
+	int i, v, sum = 0, ret;
+
+	for (i = 0; i < 4; i++) {
+		ret = mt6392_charger_read_vbat(chg, &v);
+		if (ret)
+			return ret;
+		sum += v;
+	}
+	*uv = sum / 4;
+	return 0;
+}
+
+/*
+ * Software gauge, after the vendor SW_FG "OAM" algorithm (battery_meter.c,
+ * oam_run). There is no current sense, so the current is inferred from how far
+ * the terminal voltage sits from the OCV the model expects: I = (OCV - V) / R.
+ * Integrating that current moves the model's charge. If the model is right,
+ * the inferred current is the real one, so load sag and the charger's I*R
+ * lift no longer show up as fake percent; a wrong model converges back.
+ * The shown percentage then follows the model by at most 1 % a minute, and
+ * only downwards while discharging, upwards while charging.
+ * Runs every watchdog tick (2 s).
+ */
 static void mt6392_battery_sample(struct mt6392_charger *chg)
 {
-	int uv, cap, ret;
+	unsigned long now = jiffies;
+	int uv, mv, ocv, dt_ms, target, old_ui = chg->ui_soc;
 
-	if (!chg->bat)
+	if (!chg->bat || mt6392_read_vbat_avg(chg, &uv))
 		return;
-	if (mt6392_charging(chg)) {
-		/* Loaded readings are useless; only take the paused one. */
-		if (chg->vbat_avg_uv && chg->ticks++ % MT6392_PAUSE_EVERY)
-			return;
-		mutex_lock(&chg->lock);
-		regmap_update_bits(chg->regmap, MT6392_CHR_CON0,
-				   MT6392_CSDAC_EN | MT6392_CHR_EN, 0);
-		msleep(MT6392_PAUSE_MS);
-		ret = mt6392_charger_read_vbat(chg, &uv);
-		if (mt6392_charger_hw_enable(chg))
-			dev_warn(chg->dev, "re-enabling charging after sample failed\n");
-		mutex_unlock(&chg->lock);
-		if (ret)
-			return;
-		/* one sample a minute: take it nearly as is */
-		chg->vbat_avg_uv = chg->vbat_avg_uv ? (chg->vbat_avg_uv + 3 * uv) / 4 : uv;
-	} else {
-		chg->ticks = 0;
-		if (mt6392_charger_read_vbat(chg, &uv))
-			return;
-		/* 1/8 weight: ~16 s time constant, flattens load spikes */
-		chg->vbat_avg_uv = chg->vbat_avg_uv ? chg->vbat_avg_uv + (uv - chg->vbat_avg_uv) / 8 : uv;
+	chg->vbat_avg_uv = chg->vbat_avg_uv + (uv - chg->vbat_avg_uv) / 8;
+
+	dt_ms = min_t(unsigned long, jiffies_to_msecs(now - chg->last_jiffies), MT6392_MAX_DT_MS);
+	chg->last_jiffies = now;
+
+	mv = uv / 1000;
+	ocv = mt6392_uah_to_ocv(chg->charge_uah);
+	chg->current_ma = (ocv - mv) * 1000 / mt6392_rbat_mohm(ocv);
+	chg->charge_uah -= (int)div_s64((s64)chg->current_ma * dt_ms, 3600);
+	chg->charge_uah = clamp(chg->charge_uah, 0, MT6392_QMAX_MAH * 1000);
+
+	chg->ui_ms += dt_ms;
+	if (chg->ui_ms >= MT6392_UI_STEP_MS) {
+		chg->ui_ms = 0;
+		target = mt6392_uah_to_soc(chg->charge_uah);
+		if (chg->current_ma > 0 && target < chg->ui_soc)
+			chg->ui_soc--;
+		else if (chg->current_ma < 0 && target > chg->ui_soc)
+			chg->ui_soc++;
 	}
 
-	cap = mt6392_ocv_to_capacity(chg->vbat_avg_uv);
-	if (cap != chg->last_capacity) {
-		chg->last_capacity = cap;
+	if (chg->ui_soc != old_ui)
 		power_supply_changed(chg->bat);
-	}
+}
+
+/*
+ * Starting point for the model: the battery voltage with the charge path off,
+ * so the charger's lift is not mistaken for charge. Boot load still drags it
+ * a little low; the model recovers from that on its own.
+ * ponytail: no state kept across reboots (the vendor stores it in RTC).
+ */
+static void mt6392_battery_init(struct mt6392_charger *chg)
+{
+	int uv;
+
+	regmap_update_bits(chg->regmap, MT6392_CHR_CON0,
+			   MT6392_CSDAC_EN | MT6392_CHR_EN, 0);
+	msleep(500);
+	if (mt6392_read_vbat_avg(chg, &uv))
+		uv = mt6392_ocv[ARRAY_SIZE(mt6392_ocv) / 2].mv * 1000;
+	chg->vbat_avg_uv = uv;
+	chg->charge_uah = mt6392_ocv_to_uah(uv / 1000);
+	chg->ui_soc = mt6392_uah_to_soc(chg->charge_uah);
+	chg->last_jiffies = jiffies;
+	dev_info(chg->dev, "battery %d uV at probe, starting at %d %%\n", uv, chg->ui_soc);
 }
 
 static int mt6392_battery_get_property(struct power_supply *psy,
@@ -562,7 +680,7 @@ static int mt6392_battery_get_property(struct power_supply *psy,
 			val->intval = POWER_SUPPLY_STATUS_DISCHARGING;
 		else if (!chg->enabled)
 			val->intval = POWER_SUPPLY_STATUS_NOT_CHARGING;
-		else if (chg->vbat_avg_uv >= chg->cv_uv - MT6392_FULL_MARGIN_UV)
+		else if (mt6392_full(chg))
 			val->intval = POWER_SUPPLY_STATUS_FULL;
 		else
 			val->intval = POWER_SUPPLY_STATUS_CHARGING;
@@ -573,7 +691,17 @@ static int mt6392_battery_get_property(struct power_supply *psy,
 		val->intval = chg->vbat_avg_uv;
 		return 0;
 	case POWER_SUPPLY_PROP_CAPACITY:
-		val->intval = mt6392_ocv_to_capacity(chg->vbat_avg_uv);
+		val->intval = chg->ui_soc;
+		return 0;
+	case POWER_SUPPLY_PROP_CURRENT_NOW:
+		/* estimated by the SW gauge; power_supply sign: < 0 discharging */
+		val->intval = -chg->current_ma * 1000;
+		return 0;
+	case POWER_SUPPLY_PROP_VOLTAGE_OCV:
+		val->intval = mt6392_uah_to_ocv(chg->charge_uah) * 1000;
+		return 0;
+	case POWER_SUPPLY_PROP_CHARGE_NOW:
+		val->intval = chg->charge_uah;
 		return 0;
 	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
 		val->intval = 2787000;	/* vendor q_max_pos_25, mAh -> uAh */
@@ -596,6 +724,9 @@ static enum power_supply_property mt6392_battery_properties[] = {
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 	POWER_SUPPLY_PROP_VOLTAGE_AVG,
 	POWER_SUPPLY_PROP_CAPACITY,
+	POWER_SUPPLY_PROP_CURRENT_NOW,
+	POWER_SUPPLY_PROP_VOLTAGE_OCV,
+	POWER_SUPPLY_PROP_CHARGE_NOW,
 	POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,
 	POWER_SUPPLY_PROP_VOLTAGE_MIN_DESIGN,
 	POWER_SUPPLY_PROP_VOLTAGE_MAX_DESIGN,
@@ -755,12 +886,11 @@ static int mt6392_charger_probe(struct platform_device *pdev)
 	if (IS_ERR(chg->psy))
 		return PTR_ERR(chg->psy);
 
-	chg->last_capacity = -1;
 	chg->bat = devm_power_supply_register(&pdev->dev, &mt6392_battery_desc,
 					      &psy_cfg);
 	if (IS_ERR(chg->bat))
 		return PTR_ERR(chg->bat);
-	mt6392_battery_sample(chg);
+	mt6392_battery_init(chg);
 
 	ret = mt6392_charger_online(chg, &online);
 	if (ret)

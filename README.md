@@ -26,9 +26,12 @@ Working:
 - Reliable boot from eMMC: pwrap `OP_TYPE`/`MSB_FIRST` fix, arch timer
   lost-event workaround (erratum DT flag), `console=tty0`, GPT irq NULL deref fix
 - MT6392 charger: 900 mA, drops to 450 mA if VBUS sags; re-arms the charge
-  path on every plug-in (the PMIC clears it on unplug); battery % from an OCV
-  table, sampled during a 1 s charge pause once a minute while charging;
-  charge-only mode when powered on by the cable
+  path on every plug-in (the PMIC clears it on unplug); battery % from a
+  software gauge after the vendor SW_FG "OAM" algorithm (no current sense:
+  current inferred from OCV(model) - V over the vendor R table, integrated;
+  shown % moves at most 1 %/min and only in the charge direction; host
+  simulation in `scripts/gauge-sim`); charge-only mode when powered on by
+  the cable
 - Backlight (disp_pwm + mmsys clocks), simpledrm reported as a DSI connector
 - Touch: flashless Goodix GT912F at 0x5d (not Silead), via goodix fw upload
 - BMA253 accelerometer and rotation, cpufreq + thermal throttling, RTC
@@ -36,8 +39,10 @@ Working:
   UCM), memif format fix, both volume keys
 - Wi-Fi and Bluetooth: Luca's consys drivers ported to 7.3 with stock firmware;
   fixed a BT kthread busy loop and the firmware's empty LE command bitmap, so
-  BLE keyboards pair and reconnect. The driver makes up a new MAC every boot,
-  so reach the tablet as `lenovo-tabe7.local` (avahi)
+  BLE keyboards pair and reconnect. Stable Wi-Fi and BT addresses: the
+  drivers read the vendor NVRAM records through request_firmware(), so the
+  init script writes short WIFI/BT_Addr files under /lib/firmware with
+  locally administered addresses derived from the SoC efuse ID
 - nftables firewall (needs `CONFIG_IPV6` for the inet table)
 - Phosh with a patched phrog greeter (first PIN attempt no longer fails)
 
