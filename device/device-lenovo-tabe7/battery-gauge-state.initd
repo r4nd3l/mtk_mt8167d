@@ -1,0 +1,27 @@
+#!/sbin/openrc-run
+# The mt6392 software gauge restarts from a voltage read under boot load,
+# which reads several percent low. Save its charge at shutdown and hand it
+# back at boot; the driver only takes it if the fresh reading agrees (it
+# refuses e.g. after charging while powered off). The file is removed once
+# used, so a crash or a flat battery never brings back a stale value.
+description="Keep the battery gauge state across reboots"
+STATE=/var/lib/misc/mt6392-charge
+BAT=/sys/class/power_supply/mt6392-battery
+
+depend() {
+	need localmount
+}
+
+start() {
+	ebegin "Restoring battery gauge state"
+	[ -s "$STATE" ] && cat "$STATE" 2>/dev/null > "$BAT/charge_now"
+	rm -f "$STATE"
+	eend 0
+}
+
+stop() {
+	ebegin "Saving battery gauge state"
+	mkdir -p "${STATE%/*}"
+	cat "$BAT/charge_now" > "$STATE"
+	eend $?
+}

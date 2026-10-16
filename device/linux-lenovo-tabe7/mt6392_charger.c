@@ -181,6 +181,16 @@ static const struct { u16 mv; u16 mohm; } mt6392_rbat[] = {
 /* "Full": in CV, within this of the CV setpoint, estimated current below. */
 #define MT6392_FULL_MARGIN_MV	30
 #define MT6392_FULL_CURRENT_MA	60
+/*
+ * Restoring the charge saved at shutdown: accepted only shortly after probe
+ * and only if the probe-time voltage agrees with it. That reading is taken
+ * under boot load, so the true OCV sits at or above it: allow the saved OCV
+ * up to this far above, and only a little below (more below = it charged
+ * while off, so the fresh reading wins).
+ */
+#define MT6392_RESTORE_WINDOW_MS	300000
+#define MT6392_RESTORE_ABOVE_MV		150
+#define MT6392_RESTORE_BELOW_MV		30
 
 struct mt6392_charger {
 	struct device *dev;
@@ -194,6 +204,8 @@ struct mt6392_charger {
 	int ui_soc;
 	unsigned long last_jiffies;
 	unsigned int ui_ms;
+	unsigned long probe_jiffies;
+	int probe_mv;		/* battery voltage at probe, charge path off */
 	struct delayed_work wdt_work;
 	struct mutex lock;	/* enabled + charge path writes */
 	u32 cv_uv;
@@ -651,6 +663,8 @@ static void mt6392_battery_init(struct mt6392_charger *chg)
 	if (mt6392_read_vbat_avg(chg, &uv))
 		uv = mt6392_ocv[ARRAY_SIZE(mt6392_ocv) / 2].mv * 1000;
 	chg->vbat_avg_uv = uv;
+	chg->probe_mv = uv / 1000;
+	chg->probe_jiffies = jiffies;
 	chg->charge_uah = mt6392_ocv_to_uah(uv / 1000);
 	chg->ui_soc = mt6392_uah_to_soc(chg->charge_uah);
 	chg->last_jiffies = jiffies;
@@ -732,12 +746,56 @@ static enum power_supply_property mt6392_battery_properties[] = {
 	POWER_SUPPLY_PROP_VOLTAGE_MAX_DESIGN,
 };
 
+/*
+ * Writing CHARGE_NOW restores the gauge state saved at the last shutdown
+ * (the vendor keeps it in RTC spare bits). Without it every boot restarts
+ * from a voltage read under boot load, which reads several percent low.
+ */
+static int mt6392_battery_set_property(struct power_supply *psy,
+				       enum power_supply_property psp,
+				       const union power_supply_propval *val)
+{
+	struct mt6392_charger *chg = power_supply_get_drvdata(psy);
+	int ocv;
+
+	if (psp != POWER_SUPPLY_PROP_CHARGE_NOW)
+		return -EINVAL;
+	if (val->intval < 0 || val->intval > MT6392_QMAX_MAH * 1000)
+		return -EINVAL;
+	if (time_after(jiffies, chg->probe_jiffies +
+		       msecs_to_jiffies(MT6392_RESTORE_WINDOW_MS)))
+		return -EBUSY;
+
+	ocv = mt6392_uah_to_ocv(val->intval);
+	if (ocv > chg->probe_mv + MT6392_RESTORE_ABOVE_MV ||
+	    ocv < chg->probe_mv - MT6392_RESTORE_BELOW_MV) {
+		dev_info(chg->dev, "saved charge (OCV %d mV) disagrees with %d mV at probe, ignored\n",
+			 ocv, chg->probe_mv);
+		return -ERANGE;
+	}
+
+	chg->charge_uah = val->intval;
+	chg->ui_soc = mt6392_uah_to_soc(chg->charge_uah);
+	dev_info(chg->dev, "restored saved charge: %d uAh, %d %%\n",
+		 chg->charge_uah, chg->ui_soc);
+	power_supply_changed(chg->bat);
+	return 0;
+}
+
+static int mt6392_battery_property_is_writeable(struct power_supply *psy,
+						enum power_supply_property psp)
+{
+	return psp == POWER_SUPPLY_PROP_CHARGE_NOW;
+}
+
 static const struct power_supply_desc mt6392_battery_desc = {
 	.name		= "mt6392-battery",
 	.type		= POWER_SUPPLY_TYPE_BATTERY,
 	.properties	= mt6392_battery_properties,
 	.num_properties	= ARRAY_SIZE(mt6392_battery_properties),
 	.get_property	= mt6392_battery_get_property,
+	.set_property	= mt6392_battery_set_property,
+	.property_is_writeable = mt6392_battery_property_is_writeable,
 };
 
 static int mt6392_charger_get_property(struct power_supply *psy,

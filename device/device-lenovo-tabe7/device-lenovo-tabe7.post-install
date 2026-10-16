@@ -11,6 +11,7 @@ rc-update -q add charge-mode default
 rc-update -q add backlight-follow-dpms default
 rc-update -q add mtk-wifi default
 rc-update -q add avahi-daemon default
+rc-update -q add battery-gauge-state default
 
 # No GPU driver (PowerVR GE8300): plain CPU rendering is the least bad path.
 # /etc/environment is read by pam_env, so greetd's greeter and the Phosh
