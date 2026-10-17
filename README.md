@@ -45,16 +45,19 @@ Working:
   init script writes short WIFI/BT_Addr files under /lib/firmware with
   locally administered addresses derived from the SoC efuse ID
 - nftables firewall (needs `CONFIG_IPV6` for the inet table)
+- USB OTG: dr_mode otg with the IDDIG pull fixed (R1R0 pin, `MTK_PUPD_SET_R1R0_01`;
+  a bare bias-pull-up made musb fail to probe). The board has no VBUS boost, so
+  host mode needs a powered OTG Y-cable or hub; "USB host mode" in the app grid
+  (`usb-host-mode`) switches the role without root
+- Wi-Fi scans are rate-limited while connected (1 per 30 s): GNOME Settings
+  scanned every 7-8 s and this firmware drops the link on online scans
 - Phosh with a patched phrog greeter (first PIN attempt no longer fails)
 
 Not yet:
 
 - GPU (PowerVR GE8300 needs 32-bit MIPS bus support in `drm/imagination`)
-- USB OTG: dr_mode otg with the IDDIG pull fixed (R1R0 pin, `MTK_PUPD_SET_R1R0_01`;
-  a bare bias-pull-up made musb fail to probe). The board has no VBUS boost, so
-  host mode needs a powered OTG Y-cable or hub; "USB host mode" in the app grid
-  (`usb-host-mode`) switches the role without root
-- Headphone jack detection, mediatek-drm instead of simpledrm
+- mediatek-drm instead of simpledrm (DSI comes up only about half the time
+  on MT8167, per Luca), camera (no MT8167 seninf/ISP in mainline)
 
 ### Firmware is not in this repository
 
