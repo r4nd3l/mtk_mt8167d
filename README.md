@@ -36,7 +36,8 @@ Working:
 - Touch: flashless Goodix GT912F at 0x5d (not Silead), via goodix fw upload
 - BMA253 accelerometer and rotation, cpufreq + thermal throttling, RTC
 - Audio: speaker (the external amp sits on the left headphone channel, mono
-  UCM), memif format fix, both volume keys
+  UCM), memif format fix, both volume keys; headphone plug detection on GPIO19
+  (vendor ACCDET in EINT mode), PipeWire switches speaker/headphones on its own
 - Wi-Fi and Bluetooth: Luca's consys drivers ported to 7.3 with stock firmware;
   fixed a BT kthread busy loop and the firmware's empty LE command bitmap, so
   BLE keyboards pair and reconnect. Stable Wi-Fi and BT addresses: the

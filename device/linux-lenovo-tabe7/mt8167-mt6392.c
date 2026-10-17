@@ -5,13 +5,15 @@
  * amplifier, e.g. the Lenovo Tab E7 (TB-7104F).
  *
  * ponytail: one playback and one capture front end on the INT ADDA back end;
- * no jack detection (ACCDET), no I2S/HDMI/BT links. Add them when needed.
+ * headphone detection from a plain GPIO (no ACCDET/mic detection), no
+ * I2S/HDMI/BT links. Add them when needed.
  */
 
 #include <linux/gpio/consumer.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
+#include <sound/jack.h>
 #include <sound/soc.h>
 
 SND_SOC_DAILINK_DEFS(playback,
@@ -94,6 +96,37 @@ static const struct snd_kcontrol_new mt8167_mt6392_controls[] = {
 	SOC_DAPM_PIN_SWITCH("Headset Mic"),
 };
 
+/*
+ * Headphone plug detection: the vendor ACCDET runs in EINT mode on the
+ * TB-7104F, i.e. the jack switch is just a GPIO (EINT19, low = plugged).
+ * Only the "Headphone Jack" control is exposed; UCM/PipeWire pick the
+ * output from it.
+ */
+static struct snd_soc_jack mt8167_mt6392_hp_jack;
+
+static struct snd_soc_jack_gpio mt8167_mt6392_hp_gpio = {
+	.name = "hp-det",
+	.report = SND_JACK_HEADPHONE,
+	.debounce_time = 150,
+};
+
+static int mt8167_mt6392_late_probe(struct snd_soc_card *card)
+{
+	int ret;
+
+	if (!of_property_present(card->dev->of_node, "hp-det-gpios"))
+		return 0;
+
+	ret = snd_soc_card_jack_new(card, "Headphone Jack", SND_JACK_HEADPHONE,
+				    &mt8167_mt6392_hp_jack);
+	if (ret)
+		return ret;
+
+	mt8167_mt6392_hp_gpio.gpiod_dev = card->dev;
+	return snd_soc_jack_add_gpiods(card->dev, &mt8167_mt6392_hp_jack, 1,
+				       &mt8167_mt6392_hp_gpio);
+}
+
 static struct snd_soc_aux_dev mt8167_mt6392_aux = {
 	.dlc = COMP_AUX(NULL),
 };
@@ -112,6 +145,7 @@ static struct snd_soc_card mt8167_mt6392_card = {
 	.controls = mt8167_mt6392_controls,
 	.num_controls = ARRAY_SIZE(mt8167_mt6392_controls),
 	.fully_routed = false,
+	.late_probe = mt8167_mt6392_late_probe,
 };
 
 static int mt8167_mt6392_probe(struct platform_device *pdev)
