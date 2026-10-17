@@ -50,9 +50,10 @@ Working:
 Not yet:
 
 - GPU (PowerVR GE8300 needs 32-bit MIPS bus support in `drm/imagination`)
-- USB OTG host mode: pulling up the IDDIG pin is right, but without VBUS
-  sensing `usb-conn-gpio` then reports `USB_ROLE_NONE` and the gadget never
-  binds (USB networking dies). Needs VBUS detection, e.g. from the charger.
+- USB OTG: dr_mode otg with the IDDIG pull fixed (R1R0 pin, `MTK_PUPD_SET_R1R0_01`;
+  a bare bias-pull-up made musb fail to probe). The board has no VBUS boost, so
+  host mode needs a powered OTG Y-cable or hub; "USB host mode" in the app grid
+  (`usb-host-mode`) switches the role without root
 - Headphone jack detection, mediatek-drm instead of simpledrm
 
 ### Firmware is not in this repository

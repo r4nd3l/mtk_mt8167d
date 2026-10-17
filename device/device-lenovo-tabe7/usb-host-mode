@@ -1,0 +1,27 @@
+#!/bin/sh
+# Switch the micro-USB port between device mode (PC link, charging) and host
+# mode (keyboard, mouse, USB stick). This board cannot supply 5 V to the port,
+# so host mode only works through a powered OTG Y-cable or a powered hub.
+# Usage: usb-host-mode [host|device|toggle]
+R=$(ls -d /sys/class/usb_role/*/role 2>/dev/null | head -1)
+if [ -z "$R" ]; then
+	notify-send -i drive-removable-media "USB" "No USB role switch (kernel without OTG)"
+	exit 1
+fi
+
+case "${1:-toggle}" in
+host|device) new=$1 ;;
+*) if [ "$(cat "$R")" = host ]; then new=device; else new=host; fi ;;
+esac
+
+if echo "$new" > "$R"; then
+	if [ "$new" = host ]; then
+		msg="Host mode: use a powered OTG cable or hub"
+	else
+		msg="Device mode: PC connection and charging"
+	fi
+	notify-send -i drive-removable-media "USB" "$msg"
+else
+	notify-send -i drive-removable-media "USB" "Could not switch to $new"
+	exit 1
+fi

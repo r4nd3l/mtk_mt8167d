@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=USB host mode
+Comment=Switch the USB port between PC/charging and keyboard/mouse (powered OTG cable needed)
+Exec=usb-host-mode toggle
+Icon=drive-removable-media
+Categories=Settings;HardwareSettings;
+X-Purism-FormFactor=Workstation;Mobile;

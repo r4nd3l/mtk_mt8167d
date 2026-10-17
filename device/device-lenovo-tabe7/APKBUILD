@@ -2,7 +2,7 @@
 pkgname=device-lenovo-tabe7
 pkgdesc="Lenovo Tab E7 (TB-7104F)"
 pkgver=0.1
-pkgrel=37
+pkgrel=38
 url="https://postmarketos.org"
 license="MIT"
 arch="aarch64"
@@ -32,6 +32,9 @@ source="deviceinfo
 	mtk-wifi.initd
 	battery-gauge-state.initd
 	upower-lenovo-tabe7.conf
+	usb-host-mode
+	usb-host-mode.desktop
+	90-lenovo-tabe7-usb-role.rules
 	90-lenovo-tabe7-wifi-mac.conf
 	ucm-mt8167-mt6392.conf
 	ucm-HiFi.conf
@@ -83,6 +86,12 @@ package() {
 	# MT8167 connsys Wi-Fi/BT bring-up (manual start until proven stable)
 	install -Dm755 "$srcdir"/mtk-wifi.initd "$pkgdir"/etc/init.d/mtk-wifi
 	install -Dm755 "$srcdir"/battery-gauge-state.initd "$pkgdir"/etc/init.d/battery-gauge-state
+	# USB role switch for host mode (no VBUS boost: powered OTG cable/hub only)
+	install -Dm755 "$srcdir"/usb-host-mode "$pkgdir"/usr/bin/usb-host-mode
+	install -Dm644 "$srcdir"/usb-host-mode.desktop \
+		"$pkgdir"/usr/share/applications/usb-host-mode.desktop
+	install -Dm644 "$srcdir"/90-lenovo-tabe7-usb-role.rules \
+		"$pkgdir"/usr/lib/udev/rules.d/90-lenovo-tabe7-usb-role.rules
 	install -Dm644 "$srcdir"/upower-lenovo-tabe7.conf \
 		"$pkgdir"/etc/UPower/UPower.conf.d/90-lenovo-tabe7.conf
 	install -Dm644 "$srcdir"/90-lenovo-tabe7-wifi-mac.conf \
@@ -125,6 +134,9 @@ fd2bdd4160d22da5557de1c5e40742548d44617741bcddba1935461923db69098cab85e291c54863
 0045c1efc13ea8e65c1913fc6a9f5fc048ceb8660a34936832b4190806b3a78984c9eea03306027170a0b0d8c0ecb26e1b84fb1bfc6efc139c1ff7ad37d0b3eb  mtk-wifi.initd
 57ca8c252d367e60d55cc298194541743d60109be8a83cf0724a81df09932cb45baf1200b922cf86d889704bb5dfcefc59bac922ee78cf3433b619a62ec408dd  battery-gauge-state.initd
 cf812d9c70fa6aee298ec639b65c3a9ab2508ad019562824c978616922330fb00b1fa349a6e6ba3f30d657956c1a105976aeef3e53208cee61184b4e401d81f6  upower-lenovo-tabe7.conf
+57abab316dbb50dab24def34bbf1ea7f975c33e7f0324bd625c84a60032fa51b17cac0057276f1d72112a43643599bbd3d02381c0e7f70345af588edc21d6f1a  usb-host-mode
+2c45841222910f02369e334f8d116fe075ca63664dfeb2ae2938b470bd1792a1ce50e4018410b7601d4aaaf2af8d5b078140ddaecb270c1b806e468a777f87b2  usb-host-mode.desktop
+f3d3811740442372c824d353bed2535daa9fa60f34e3e21ad202c8dd767ad05a9110350da06494d5962506a05cd03f60d081e09d973c1945b55e5c02421ac248  90-lenovo-tabe7-usb-role.rules
 04c095fcb9c99ed6cc3939745e2cf50b770ad5e2a86e6a4235cb15e05ad299d01ba15cdbd8940b645097455e271d8d8678b3a73529a70b3c0c13ca27bf3ff82d  90-lenovo-tabe7-wifi-mac.conf
 a288dba84dbd54f4b0e803458cfe3b36eb0b791b27f2a95dc6df0c48553bfa891ef0c8f1eee406e0efb8cece29fe1184636c7a14b0af4c382379e2249455dc4b  ucm-mt8167-mt6392.conf
 85a60892451ac60bf44c5459004348b29d4f33ffbdb3551388b53fb5e7681d12b2510f965c8087ec620514762ac3cebeec2b1d1b38264ccf182d6bc95662e553  ucm-HiFi.conf

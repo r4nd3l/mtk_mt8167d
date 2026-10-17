@@ -3,7 +3,7 @@
 
 pkgname=linux-lenovo-tabe7
 pkgver=7.3.0_rc5
-pkgrel=48
+pkgrel=49
 pkgdesc="Lenovo Tab E7 (TB-7104F) kernel fork"
 arch="aarch64"
 _carch="arm64"
@@ -45,6 +45,7 @@ source="
 	0020-dts-sound-external-speaker-amp.patch
 	0021-dts-volume-down-on-keypad-col1.patch
 	0022-asoc-mt8167-memif-format.patch
+	0023-dts-usb-otg-iddig-pull-r1r0.patch
 	0024-dts-headphone-detect-gpio.patch
 "
 builddir="$srcdir/linux-$_commit"
@@ -113,5 +114,6 @@ e3acc85ae4ab41b548d3c94aca4481cf9d3842ea80b68bb0131864a5adf6e73d6e26069b69d39217
 c62703c9a955e3f3296ade97f8f189d12a4b73e2a3fface4bc5db9cbd93829ec639d12466fa7c89df6d46096a6118a50f6a6d5afaf33f18589e8f497bdfc7cc0  0020-dts-sound-external-speaker-amp.patch
 7a552ff5adf55e7158509ffdc83c50212bd63bed3dcfd303a3fb50e01af5b71cfbf80bc533c4a8d25af2a680cf2e0659cf03005188ce495e94a807f999988b9a  0021-dts-volume-down-on-keypad-col1.patch
 21a9d394747b6af9dd239ac409658c6c28db0450fad67e12315e8082b24350a312dd8e929c82bb98946010bf7a4c0b49e7b2ba69e1c6b18741baec6a3fcd3d55  0022-asoc-mt8167-memif-format.patch
+71b360b68a923a6090cf1f835b4870bfed737b1504ff737953bb8859eed332e1fcc467aae5004dab07649940a476da80c1c34f22da83f4ce8e6fd0f336cb0594  0023-dts-usb-otg-iddig-pull-r1r0.patch
 6b4f02023685a377fd58a7e6a3afdba60051593512f7ef941ba860dce8c0bffe32ce4687bc34ef3b33d4eb9bb771cd05a586c7df4361569d26bd1817868e6ee5  0024-dts-headphone-detect-gpio.patch
 "

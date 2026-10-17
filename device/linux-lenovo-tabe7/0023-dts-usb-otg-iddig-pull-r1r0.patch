@@ -1,0 +1,32 @@
+--- a/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
++++ b/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
+@@ -466,7 +466,13 @@
+ 		pins_iddig {
+ 			pinmux = <MT8167_PIN_41_KPROW1__FUNC_IDDIG>;
+ 			slew-rate = <0>;
+-			bias-disable;
++			/*
++			 * vendor: pulled up, so a plain cable reads ID high (device).
++			 * KPROW1 is an R1R0 PUPD pin: a bare bias-pull-up (arg 1) is
++			 * rejected with "Invalid pull argument", the usb0 pinctrl
++			 * state fails and musb never probes (no UDC, no USB net).
++			 */
++			bias-pull-up = <MTK_PUPD_SET_R1R0_01>;
+ 		};
+ 		pins_vbus {
+ 			pinmux = <MT8167_PIN_68_MSDC2_CMD__FUNC_GPIO68>;
+@@ -528,7 +534,13 @@
+ 
+ &usb0 {
+ 	status = "okay";
+-	dr_mode = "peripheral";
++	/*
++	 * OTG: ID low (OTG cable) switches to host, or by hand through
++	 * /sys/class/usb_role/11100000.usb-role-switch/role. This board has no
++	 * VBUS boost (GPIO68 drives nothing, the vendor kernel had OTG off), so
++	 * host mode needs a powered OTG Y-cable or hub.
++	 */
++	dr_mode = "otg";
+ 	usb-role-switch;
+ 
+ 	pinctrl-names = "default";

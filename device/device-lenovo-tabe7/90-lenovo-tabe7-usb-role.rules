@@ -1,0 +1,3 @@
+# Let the logged-in user (plugdev) switch the USB role without root,
+# for usb-host-mode.
+SUBSYSTEM=="usb_role", ACTION=="add", RUN+="/bin/chgrp plugdev /sys%p/role", RUN+="/bin/chmod 0664 /sys%p/role"
