@@ -1,0 +1,133 @@
+--- a/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
++++ b/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
+@@ -135,6 +135,52 @@
+ 			pinctrl-0 = <&led_pins>;
+ 		};
+ 	};
++
++	/*
++	 * MIPI CSI-2 receiver + CAMSV raw capture (mt8167-camsv.c). It also
++	 * generates the sensor MCLK on pin 102 and exports it as a clock.
++	 */
++	camsv: camera@15004000 {
++		compatible = "mediatek,mt8167-camsv";
++		reg = <0 0x15008000 0 0x1000>,
++		      <0 0x15004000 0 0x1000>,
++		      <0 0x10011800 0 0x100>, <0 0x15001000 0 0x1000>;
++		reg-names = "seninf", "camsv", "mipi-rx", "larb";
++		interrupts = <GIC_SPI 180 IRQ_TYPE_LEVEL_LOW>;
++		power-domains = <&spm MT8167_POWER_DOMAIN_ISP>;
++		clocks = <&topckgen CLK_TOP_CAM_MM>,
++			 <&imgsys CLK_IMG_SEN_TG>,
++			 <&imgsys CLK_IMG_SEN_CAM>,
++			 <&imgsys CLK_IMG_CAM_CAM>,
++			 <&imgsys CLK_IMG_CAM_SMI>,
++			 <&imgsys CLK_IMG_LARB1_SMI>;
++		clock-names = "cam_mm", "sen_tg", "sen_cam", "cam_cam",
++			      "cam_smi", "larb1";
++		/* MCLK source: 26 MHz, divided by 2 in SENINF TG1 = vendor 13 MHz */
++		assigned-clocks = <&topckgen CLK_TOP_CAMTG_MM_SEL>;
++		assigned-clock-parents = <&topckgen CLK_TOP_CLK26M>;
++		/* no mipi_26m_dbg (DSI PHY ref, gating it blanks the panel) and no iommus (attaching the M4U garbles the LK framebuffer scanout) */
++		#clock-cells = <0>;
++		pinctrl-names = "default";
++		pinctrl-0 = <&cam_mclk_pins>;
++
++		port {
++			#address-cells = <1>;
++			#size-cells = <0>;
++
++			camsv_in: endpoint@0 {
++				reg = <0>;
++				remote-endpoint = <&gc030a_out>;
++				data-lanes = <1>;
++			};
++
++			camsv_in_rear: endpoint@1 {
++				reg = <1>;
++				remote-endpoint = <&gc2375h_out>;
++				data-lanes = <1>;
++			};
++		};
++	};
+ };
+ 
+ /* With the firmware on Android devices, cores don't seem to come back after out
+@@ -282,7 +328,45 @@
+ 	pinctrl-0 = <&i2c_pins_2>;
+ 	clock-div = <2>;
+ 
+-	// TODO: camera main @ 0x36, camera sub @ 0x30
++	/*
++	 * Both sensors share one CSI-2 lane pair, MCLK and the reset pad
++	 * (GPIO49, hogged high in &pio); power-down selects the active one.
++	 */
++	front_camera: camera@21 {
++		compatible = "galaxycore,gc030a";
++		reg = <0x21>;
++		clocks = <&camsv>;
++		dovdd-supply = <&mt6392_vcamio_reg>;
++		avdd-supply = <&mt6392_vcama_reg>;
++		dvdd-supply = <&mt6392_vcamd_reg>;
++		powerdown-gpios = <&pio 51 GPIO_ACTIVE_HIGH>;
++
++		port {
++			gc030a_out: endpoint {
++				remote-endpoint = <&camsv_in>;
++				data-lanes = <1>;
++				link-frequencies = /bits/ 64 <119000000>;
++			};
++		};
++	};
++
++	rear_camera: camera@17 {
++		compatible = "galaxycore,gc2375h";
++		reg = <0x17>;
++		clocks = <&camsv>;
++		dovdd-supply = <&mt6392_vcamio_reg>;
++		avdd-supply = <&mt6392_vcama_reg>;
++		dvdd-supply = <&mt6392_vcamd_reg>;
++		powerdown-gpios = <&pio 48 GPIO_ACTIVE_HIGH>;
++
++		port {
++			gc2375h_out: endpoint {
++				remote-endpoint = <&camsv_in_rear>;
++				data-lanes = <1>;
++				link-frequencies = /bits/ 64 <227500000>;
++			};
++		};
++	};
+ };
+ 
+ &mmc0 {
+@@ -504,6 +588,20 @@
+ 			slew-rate = <1>;
+ 		};
+ 	};
++
++	cam_mclk_pins: cam-mclk-pins {
++		pins-mclk {
++			pinmux = <MT8167_PIN_102_CMMCLK__FUNC_CMMCLK>;
++		};
++	};
++
++	/* camera reset, shared by both sensors: never asserted, power-down gates them */
++	cam-reset-hog {
++		gpio-hog;
++		gpios = <49 GPIO_ACTIVE_HIGH>;
++		output-high;
++		line-name = "cam-reset";
++	};
+ };
+ 
+ &keypad {
+@@ -773,3 +871,9 @@
+ &gpu {
+ 	status = "okay";
+ };
++
++/* camera DVDD: the vendor drives it at 1.8 V for both sensors */
++&mt6392_vcamd_reg {
++	regulator-min-microvolt = <1800000>;
++	regulator-max-microvolt = <1800000>;
++};

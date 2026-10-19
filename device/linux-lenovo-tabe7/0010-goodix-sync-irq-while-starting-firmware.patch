@@ -1,0 +1,43 @@
+From 18309e0896b108c6c64e956f1a1a5b774e1e7e07 Mon Sep 17 00:00:00 2001
+From: Luca Leonardo Scorcia <l.scorcia@gmail.com>
+Date: Sun, 18 Oct 2026 20:45:04 +0200
+Subject: [PATCH] Input: goodix - sync the irq controller while starting
+ firmware
+
+On the Lenovo Tab E7 TB-7104F which has a Goodix GT-912 touch screen,
+the touch screen fails to come online after loading firmware, producing
+the error "Error reading 1 bytes from 0x8041: -6".
+
+Comparing the upstream code with the Android stock sources a call to
+goodix_int_sync is required between the upload of the firmware and the
+watchdog restart. With this change the touchscreen is correctly detected
+and working.
+
+Signed-off-by: Luca Leonardo Scorcia <l.scorcia@gmail.com>
+---
+ drivers/input/touchscreen/goodix_fwupload.c | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/drivers/input/touchscreen/goodix_fwupload.c b/drivers/input/touchscreen/goodix_fwupload.c
+index 5ae9a109ba0d17..01e7705ef51503 100644
+--- a/drivers/input/touchscreen/goodix_fwupload.c
++++ b/drivers/input/touchscreen/goodix_fwupload.c
+@@ -155,6 +155,7 @@ static int goodix_enter_upload_mode(struct i2c_client *client)
+ 
+ static int goodix_start_firmware(struct i2c_client *client)
+ {
++	struct goodix_ts_data *ts = i2c_get_clientdata(client);
+ 	int error;
+ 	u8 val;
+ 
+@@ -168,6 +169,10 @@ static int goodix_start_firmware(struct i2c_client *client)
+ 	if (error)
+ 		return error;
+ 
++	error = goodix_int_sync(ts);
++	if (error)
++		return error;
++
+ 	error = goodix_i2c_read(client, GOODIX_REG_SW_WDT, &val, 1);
+ 	if (error)
+ 		return error;

@@ -33,7 +33,20 @@ Working:
   simulation in `scripts/gauge-sim`); charge-only mode when powered on by
   the cable
 - Backlight (disp_pwm + mmsys clocks), simpledrm reported as a DSI connector
-- Touch: flashless Goodix GT912F at 0x5d (not Silead), via goodix fw upload
+- Touch: flashless Goodix GT912F at 0x5d (not Silead), via goodix fw upload;
+  the upload needs a `goodix_int_sync()` before the first status read (Luca's
+  patch, going upstream)
+- Rear camera (GC2375H, 2 MP): `mt8167-camsv` drives the MT8167 SENINF
+  (MIPI CSI-2 receiver) and the ISP pass1 RAW path straight into memory, no
+  ISP processing: V4L2 capture of 1600x1200 RAW10 at 30 fps. The register
+  recipe comes from MediaTek's "FrmB" userspace ISP code (MT8163 mtkcam tree):
+  CAM_EN|TG1_EN|PAK_EN, the three CAM_CTL mux registers, IMGO FIFO; the
+  SMI larb1 MMU is bypassed (physical DMA, no iommus: attaching the M4U
+  garbles the LK framebuffer while the panel runs on simpledrm) and the
+  SENINF mux runs in one-pixel mode. Sensor drivers `gc2375h` and `gc030a`
+  share one CSI port, `media-ctl -l` picks the active one. RAW only for now:
+  no auto exposure, white balance or demosaic (libcamera's software ISP is
+  the plan)
 - BMA253 accelerometer and rotation, cpufreq + thermal throttling, RTC
 - Audio: speaker (the external amp sits on the left headphone channel, mono
   UCM), memif format fix, both volume keys; headphone plug detection on GPIO19
@@ -57,7 +70,10 @@ Not yet:
 
 - GPU (PowerVR GE8300 needs 32-bit MIPS bus support in `drm/imagination`)
 - mediatek-drm instead of simpledrm (DSI comes up only about half the time
-  on MT8167, per Luca), camera (no MT8167 seninf/ISP in mainline)
+  on MT8167, per Luca)
+- Front camera (GC030A): the sensor streams but the receiver sees nothing,
+  it sits on the other CSI port and that routing is not found yet
+- Camera userspace: libcamera + software ISP, a camera app in Phosh
 
 ### Firmware is not in this repository
 

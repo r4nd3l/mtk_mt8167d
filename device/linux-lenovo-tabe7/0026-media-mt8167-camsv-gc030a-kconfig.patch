@@ -1,0 +1,87 @@
+diff -ruN a/drivers/media/i2c/Kconfig b/drivers/media/i2c/Kconfig
+--- a/drivers/media/i2c/Kconfig
++++ b/drivers/media/i2c/Kconfig
+@@ -80,6 +80,29 @@
+ 	  To compile this driver as a module, choose M here: the
+ 	  module will be called gc0310.
+ 
++config VIDEO_GC030A
++	tristate "GalaxyCore GC030A sensor support"
++	select REGMAP_I2C
++	select V4L2_FWNODE
++	help
++	  This is a Video4Linux2 sensor driver for the GalaxyCore GC030A
++	  0.3MP (VGA) MIPI CSI-2 RAW camera, e.g. the front camera of the
++	  Lenovo Tab E7.
++
++	  To compile this driver as a module, choose M here: the
++	  module will be called gc030a.
++
++config VIDEO_GC2375H
++	tristate "GalaxyCore GC2375H sensor support"
++	select REGMAP_I2C
++	select V4L2_FWNODE
++	help
++	  This is a Video4Linux2 sensor driver for the GalaxyCore GC2375H
++	  2MP MIPI CSI-2 RAW camera, e.g. the rear camera of the Lenovo Tab E7.
++
++	  To compile this driver as a module, choose M here: the
++	  module will be called gc2375h.
++
+ config VIDEO_GC05A2
+ 	tristate "GalaxyCore gc05a2 sensor support"
+ 	select V4L2_CCI_I2C
+diff -ruN a/drivers/media/i2c/Makefile b/drivers/media/i2c/Makefile
+--- a/drivers/media/i2c/Makefile
++++ b/drivers/media/i2c/Makefile
+@@ -39,6 +39,8 @@
+ obj-$(CONFIG_VIDEO_ET8EK8) += et8ek8/
+ obj-$(CONFIG_VIDEO_GC0308) += gc0308.o
+ obj-$(CONFIG_VIDEO_GC0310) += gc0310.o
++obj-$(CONFIG_VIDEO_GC030A) += gc030a.o
++obj-$(CONFIG_VIDEO_GC2375H) += gc2375h.o
+ obj-$(CONFIG_VIDEO_GC05A2) += gc05a2.o
+ obj-$(CONFIG_VIDEO_GC08A3) += gc08a3.o
+ obj-$(CONFIG_VIDEO_GC2145) += gc2145.o
+diff -ruN a/drivers/media/platform/mediatek/camsv/Kconfig b/drivers/media/platform/mediatek/camsv/Kconfig
+--- a/drivers/media/platform/mediatek/camsv/Kconfig
++++ b/drivers/media/platform/mediatek/camsv/Kconfig
+@@ -0,0 +1,16 @@
++# SPDX-License-Identifier: GPL-2.0-only
++config VIDEO_MEDIATEK_MT8167_CAMSV
++	tristate "MediaTek MT8167 SENINF/CAMSV raw capture"
++	depends on ARCH_MEDIATEK || COMPILE_TEST
++	depends on VIDEO_DEV && OF && COMMON_CLK
++	select MEDIA_CONTROLLER
++	select VIDEO_V4L2_SUBDEV_API
++	select V4L2_FWNODE
++	select VIDEOBUF2_DMA_CONTIG
++	help
++	  MIPI CSI-2 receiver (SENINF) and CAMSV DMA of the MediaTek MT8167.
++	  Captures RAW frames from one sensor without the ISP, and provides
++	  the sensor MCLK.
++
++	  To compile this driver as a module, choose M here: the module will
++	  be called mt8167-camsv.
+diff -ruN a/drivers/media/platform/mediatek/camsv/Makefile b/drivers/media/platform/mediatek/camsv/Makefile
+--- a/drivers/media/platform/mediatek/camsv/Makefile
++++ b/drivers/media/platform/mediatek/camsv/Makefile
+@@ -0,0 +1,2 @@
++# SPDX-License-Identifier: GPL-2.0-only
++obj-$(CONFIG_VIDEO_MEDIATEK_MT8167_CAMSV) += mt8167-camsv.o
+diff -ruN a/drivers/media/platform/mediatek/Kconfig b/drivers/media/platform/mediatek/Kconfig
+--- a/drivers/media/platform/mediatek/Kconfig
++++ b/drivers/media/platform/mediatek/Kconfig
+@@ -7,3 +7,4 @@
+ source "drivers/media/platform/mediatek/vcodec/Kconfig"
+ source "drivers/media/platform/mediatek/vpu/Kconfig"
+ source "drivers/media/platform/mediatek/mdp3/Kconfig"
++source "drivers/media/platform/mediatek/camsv/Kconfig"
+diff -ruN a/drivers/media/platform/mediatek/Makefile b/drivers/media/platform/mediatek/Makefile
+--- a/drivers/media/platform/mediatek/Makefile
++++ b/drivers/media/platform/mediatek/Makefile
+@@ -4,3 +4,4 @@
+ obj-y += vcodec/
+ obj-y += vpu/
+ obj-y += mdp3/
++obj-y += camsv/
