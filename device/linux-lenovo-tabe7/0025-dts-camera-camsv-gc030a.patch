@@ -53,7 +53,7 @@
  };
  
  /* With the firmware on Android devices, cores don't seem to come back after out
-@@ -282,7 +328,48 @@
+@@ -282,7 +328,47 @@
  	pinctrl-0 = <&i2c_pins_2>;
  	clock-div = <2>;
  
@@ -89,7 +89,6 @@
 +		avdd-supply = <&mt6392_vcama_reg>;
 +		dvdd-supply = <&mt6392_vcamd_reg>;
 +		powerdown-gpios = <&pio 48 GPIO_ACTIVE_HIGH>;
-+		rotation = <180>;	/* module mounted upside down, libcamera reads this */
 +		orientation = <1>;	/* V4L2_FWNODE_ORIENTATION_BACK */
 +
 +		port {

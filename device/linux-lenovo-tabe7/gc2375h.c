@@ -331,7 +331,7 @@ static int gc2375h_init_controls(struct gc2375h *s)
 	ret = v4l2_fwnode_device_parse(s->sd.dev, &props);
 	if (!ret)
 		ret = v4l2_ctrl_new_fwnode_properties(h, &gc2375h_ctrl_ops, &props);
-	dev_info(s->sd.dev, "fwnode props: ret=%d rotation=%u orientation=%u ctrl err=%d\n",
+	dev_dbg(s->sd.dev, "fwnode props: ret=%d rotation=%u orientation=%u ctrl err=%d\n",
 		 ret, props.rotation, props.orientation, h->error);
 	/* fixed mode: blanking is read-only, libcamera needs it for frame timing */
 	c = v4l2_ctrl_new_std(h, NULL, V4L2_CID_HBLANK, GC2375H_HBLANK, GC2375H_HBLANK, 1,
