@@ -54,7 +54,13 @@ Working:
   controls (`v4l2_ctrl_new_fwnode_properties`; note `orientation` is a
   number in DT, 0 front / 1 back). GNOME Snapshot shows a live, upright
   viewfinder through PipeWire: a WirePlumber drop-in hides the raw camsv
-  V4L2 node (Bayer, no ISP) and makes the back camera the default source
+  V4L2 node (Bayer, no ISP) and makes the back camera the default source.
+  The software ISP output is capped at 1024x576 (the panel is 1024x600,
+  the GTK software renderer is the bottleneck, and the CPU debayer runs the
+  SoC to 80 C). libcamera patch 0010 fixes an upstream bug where stopping
+  the camera with frames inside the software ISP left requests waiting for
+  IPA metadata forever and killed WirePlumber with the queuedRequests_
+  assertion ("No Camera Found" on the next launch)
 - Charging LED (GPIO56) follows the MT6392 battery supply through a LED
   trigger (`linux,default-trigger`)
 - BMA253 accelerometer and rotation, cpufreq + thermal throttling, RTC

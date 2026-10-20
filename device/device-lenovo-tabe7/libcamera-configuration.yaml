@@ -1,5 +1,8 @@
-# libcamera: no usable GPU on the Tab E7, the eGL debayer on llvmpipe is slow and tiled
 version: 1
 configuration:
   software_isp:
     mode: cpu
+  pipelines:
+    simple:
+      max_output_width: 1024
+      max_output_height: 576

@@ -1,0 +1,79 @@
+From: Mate Molnar <matemolnar88@gmail.com>
+Date: Tue, 20 Oct 2026 22:40:00 +0200
+Subject: [PATCH] simple: Complete requests still waiting for metadata on stop
+
+With the Software ISP every request is marked metadataRequired and only
+completes once the IPA delivers its metadata. When the camera is stopped
+while frames are in flight, SoftwareIsp::stop() cancels the queued output
+buffers, conversionOutputDone() completes them, but tryCompleteRequest()
+returns early because the metadata will never arrive (the IPA has been
+stopped). The request stays in queuedRequests_ and PipelineHandler::stop()
+hits
+
+  FATAL default pipeline_handler.cpp:398 assertion "data->queuedRequests_.empty()" failed in stop()
+
+which takes down WirePlumber whenever a PipeWire client stops the stream.
+
+Walk the frame info on stop, drop the metadata requirement and complete
+every request that has no buffers pending.
+---
+--- a/src/libcamera/pipeline/simple/simple.cpp
++++ b/src/libcamera/pipeline/simple/simple.cpp
+@@ -209,6 +209,13 @@
+ 
+ 	SimpleFrameInfo *find(uint32_t frame);
+ 
++	template<typename F>
++	void forEach(F func)
++	{
++		for (auto &[frame, info] : frameInfo_)
++			func(info);
++	}
++
+ private:
+ 	std::map<uint32_t, SimpleFrameInfo> frameInfo_;
+ };
+@@ -293,6 +300,7 @@
+ 			 Transform transform = Transform::Identity);
+ 	void imageBufferReady(FrameBuffer *buffer);
+ 	void clearIncompleteRequests();
++	void completeStoppedRequests();
+ 
+ 	unsigned int streamIndex(const Stream *stream) const
+ 	{
+@@ -992,6 +1000,27 @@
+ 	}
+ }
+ 
++/*
++ * With the Software ISP every request waits for the IPA's metadata before
++ * it completes. When the camera is stopped, requests whose buffers have all
++ * completed (or were cancelled by the ISP stop) but whose metadata the IPA
++ * never produced would stay queued forever and trip the queuedRequests_
++ * assertion in PipelineHandler::stop(). Complete them here.
++ */
++void SimpleCameraData::completeStoppedRequests()
++{
++	std::vector<Request *> pending;
++
++	frameInfo_.forEach([&](SimpleFrameInfo &info) {
++		info.metadataRequired = false;
++		if (!info.request->hasPendingBuffers())
++			pending.push_back(info.request);
++	});
++
++	for (Request *request : pending)
++		tryCompleteRequest(request);
++}
++
+ void SimpleCameraData::tryCompleteRequest(Request *request)
+ {
+ 	if (request->hasPendingBuffers())
+@@ -1736,6 +1765,7 @@
+ 
+ 	video->bufferReady.disconnect(data, &SimpleCameraData::imageBufferReady);
+ 
++	data->completeStoppedRequests();
+ 	data->frameInfo_.clear();
+ 	data->clearIncompleteRequests();
+ 	data->conversionBuffers_.clear();

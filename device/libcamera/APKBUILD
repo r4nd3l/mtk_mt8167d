@@ -3,7 +3,7 @@ maintainer="Robert Mader <robert.mader@collabora.com>"
 pkgname=libcamera
 _pkgver=0.7.2
 pkgver=9999$_pkgver
-pkgrel=5
+pkgrel=6
 pkgdesc="Linux camera framework"
 url="https://libcamera.org/"
 arch="all"
@@ -67,6 +67,7 @@ source="https://gitlab.freedesktop.org/camera/libcamera/-/archive/v$_pkgver/libc
 	0007-simple-Limit-swISP-output-sizes.patch
 	0008-libcamera-Add-quad-Bayer-CFA-layout-support.patch
 	0009-simple-Add-MediaTek-MT8167-camsv-with-swISP.patch
+	0010-simple-Complete-requests-waiting-for-metadata-on-stop.patch
 	qcam.desktop
 	$_tuning_files
 	"
@@ -190,6 +191,7 @@ de5fd287fea2c71754beb7d72a6fd739a94ec7a47ed3ea09a60130bee1c08efdcf94e12b1830914e
 ac4e3c742fde4f8e4775bd2afbaaecb18fa49b869eb4309032bae985680f97443353eb384de19a9b588b632bb1711f82c318e0431214afe09068910b2e901252  0007-simple-Limit-swISP-output-sizes.patch
 2b8ee82c974a0a54279700c70dc8973038f5e1b517cade87872319d5f0b5aa9be6df0a827a9098da3fb498238b1fe080419e9950e34def0edadca0247794f269  0008-libcamera-Add-quad-Bayer-CFA-layout-support.patch
 0430184699c9a2f343dd1ceb03b8e88296c19db8b1600ac3f90a37bb45867277094a398ed084b343027a0b3797979b6afdda89901a5b283b6f3e458300470fae  0009-simple-Add-MediaTek-MT8167-camsv-with-swISP.patch
+bdb75dd38d601babce01e23bf06ddf27d1b3924d8d1fbee7b7037675ff9c6cd7b095d744c23705558665947fc86ce82290bf280a01a47f6f10fde616d246fce6  0010-simple-Complete-requests-waiting-for-metadata-on-stop.patch
 22167a4eceb6d1b40b0b7c45fdf116c71684f5340de7f767535cb8e160ad9d2ae0f00cb3d461f73a344520a48a4641cf46226841d78bee06bfbfd2a91337f754  qcam.desktop
 2ee566653b17d565d2c0de67cbe6ebad25df5aac6051cad78e6bae52016fa2ca0247e964d735ac776b3e0bd447ead9c4fcb26cd7629228cdba3ceb91b46f378f  hi846.yaml
 4942edd551dcf51630246f71e600c17760d3574d5d45e5530d6cfeefe2c9ab1a812fbe220f8e89d92e19a499c592b2507c801ca4eb74cd15fcecb60bff5c650b  imx355.yaml
