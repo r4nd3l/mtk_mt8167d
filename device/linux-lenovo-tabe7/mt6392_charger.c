@@ -99,6 +99,13 @@
 
 /* AUXADC channel 0 is BATSNS. Sequence from the vendor pmic_auxadc.c. */
 #define MT6392_AUXADC_RQST_CH0	BIT(0)
+#define MT6392_AUXADC_RQST_CH2	BIT(2)	/* VCHARGER (VBUS through the board divider) */
+#define MT6392_AUXADC_DATA12	GENMASK(11, 0)
+/* VBUS reaches the ADC pin through 330k/39k, vendor charging_hw_pmic.c */
+#define MT6392_VBUS_DIV_NUM	(330 + 39)
+#define MT6392_VBUS_DIV_DEN	39
+/* vendor V_CHARGER_MIN: below this the adapter has folded, charging is pointless */
+#define MT6392_VBUS_MIN_UV	4400000
 #define MT6392_AUXADC_RDY	BIT(15)
 #define MT6392_AUXADC_DATA	GENMASK(14, 0)
 #define MT6392_WDT_KICK_MS	2000	/* half the 4 s timeout */
@@ -430,9 +437,12 @@ static int mt6392_charger_enable(struct mt6392_charger *chg, bool enable)
  * (or the charger LDO drops) and nothing flows. Step down to the USB value
  * then, and go back to 900 mA on the next plug-in.
  */
+static int mt6392_charger_read_vbus(struct mt6392_charger *chg, int *uv);
+
 static void mt6392_charger_check_vbus(struct mt6392_charger *chg)
 {
 	unsigned int val;
+	int vbus_uv = 0;
 	bool online;
 
 	if (regmap_read(chg->regmap, MT6392_CHR_CON0, &val))
@@ -450,10 +460,12 @@ static void mt6392_charger_check_vbus(struct mt6392_charger *chg)
 		else
 			dev_info(chg->dev, "charger plugged in, charging\n");
 	} else if (online && chg->enabled && chg->cc_ua > MT6392_CC_SAFE_UA &&
-		   (val & (MT6392_VCDT_LV_DET | MT6392_CHR_LDO_DET)) !=
-		   (MT6392_VCDT_LV_DET | MT6392_CHR_LDO_DET)) {
-		dev_warn(chg->dev, "VBUS sags at %u uA (CHR_CON0 0x%x), dropping to %u uA\n",
-			 chg->cc_ua, val, MT6392_CC_SAFE_UA);
+		   ((val & (MT6392_VCDT_LV_DET | MT6392_CHR_LDO_DET)) !=
+		    (MT6392_VCDT_LV_DET | MT6392_CHR_LDO_DET) ||
+		    (!mt6392_charger_read_vbus(chg, &vbus_uv) &&
+		     vbus_uv < MT6392_VBUS_MIN_UV))) {
+		dev_warn(chg->dev, "VBUS sags at %u uA (CHR_CON0 0x%x, VBUS %d mV), dropping to %u uA\n",
+			 chg->cc_ua, val, vbus_uv / 1000, MT6392_CC_SAFE_UA);
 		chg->cc_ua = MT6392_CC_SAFE_UA;
 		mt6392_charger_set_limits(chg);
 	}
@@ -506,6 +518,35 @@ static int mt6392_charger_read_vbat(struct mt6392_charger *chg, int *uv)
 			return ret;
 		if (val & MT6392_AUXADC_RDY) {
 			*uv = ((u64)FIELD_GET(MT6392_AUXADC_DATA, val) * 3 * 1800000) >> 15;
+			return 0;
+		}
+		usleep_range(100, 200);
+	}
+	return -ETIMEDOUT;
+}
+
+/*
+ * Charger (VBUS) voltage, AUXADC channel 2: 12-bit result against 1.8 V, then
+ * the board's 330k/39k divider. About 4.4 V and above means a healthy adapter.
+ */
+static int mt6392_charger_read_vbus(struct mt6392_charger *chg, int *uv)
+{
+	unsigned int val;
+	int ret, i;
+
+	ret = regmap_write(chg->regmap, MT6392_AUXADC_RQST0_SET,
+			   MT6392_AUXADC_RQST_CH2);
+	if (ret)
+		return ret;
+	usleep_range(1500, 2000);
+
+	for (i = 0; i < 50; i++) {
+		ret = regmap_read(chg->regmap, MT6392_AUXADC_ADC2, &val);
+		if (ret)
+			return ret;
+		if (val & MT6392_AUXADC_RDY) {
+			*uv = ((u64)FIELD_GET(MT6392_AUXADC_DATA12, val) * 1800000 *
+			       MT6392_VBUS_DIV_NUM / MT6392_VBUS_DIV_DEN) >> 12;
 			return 0;
 		}
 		usleep_range(100, 200);
@@ -831,7 +872,8 @@ static int mt6392_charger_get_property(struct power_supply *psy,
 		val->intval = chg->cc_ua;
 		return 0;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
-		return mt6392_charger_read_vbat(chg, &val->intval);
+		/* the charger supply's voltage is VBUS; the battery supply has VBAT */
+		return mt6392_charger_read_vbus(chg, &val->intval);
 	default:
 		return -EINVAL;
 	}

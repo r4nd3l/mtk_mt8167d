@@ -9,3 +9,8 @@ enable-animations=false
 sleep-inactive-ac-type='nothing'
 sleep-inactive-battery-type='nothing'
 
+
+[org.gnome.desktop.session]
+# blank the screen after 5 min: the bundled 5 V/550 mA adapter cannot keep up
+# with the lit panel, an always-on display drains the battery even on the charger
+idle-delay=uint32 300
