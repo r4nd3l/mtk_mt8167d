@@ -35,6 +35,9 @@
 #define GC030A_HEIGHT		480
 #define GC030A_PIXEL_RATE	23800000
 #define GC030A_LINK_FREQ	119000000	/* RAW10, 1 lane: 23.8 Mpx * 10 / 2 */
+/* vendor: line length 1561, frame length 506 at 23.8 MHz = 30 fps */
+#define GC030A_HBLANK		(1561 - GC030A_WIDTH)
+#define GC030A_VBLANK		(506 - GC030A_HEIGHT)
 #define GC030A_EXP_MAX		0xfff
 #define GC030A_EXP_DEF		0x1c8
 #define GC030A_GAIN_MIN		0x40	/* 1.0x, units of 1/64 */
@@ -322,9 +325,27 @@ static int gc030a_init_controls(struct gc030a *s)
 	struct v4l2_ctrl_handler *h = &s->ctrls;
 	struct v4l2_ctrl *c;
 
-	v4l2_ctrl_handler_init(h, 4);
+	struct v4l2_fwnode_device_properties props;
+	int ret;
+
+	v4l2_ctrl_handler_init(h, 8);
 	s->exposure = v4l2_ctrl_new_std(h, &gc030a_ctrl_ops, V4L2_CID_EXPOSURE,
 					1, GC030A_EXP_MAX, 1, GC030A_EXP_DEF);
+	/* rotation and orientation from the DT node, libcamera reads them as controls */
+	ret = v4l2_fwnode_device_parse(s->sd.dev, &props);
+	if (!ret)
+		ret = v4l2_ctrl_new_fwnode_properties(h, &gc030a_ctrl_ops, &props);
+	dev_info(s->sd.dev, "fwnode props: ret=%d rotation=%u orientation=%u ctrl err=%d\n",
+		 ret, props.rotation, props.orientation, h->error);
+	/* fixed mode: blanking is read-only, libcamera needs it for frame timing */
+	c = v4l2_ctrl_new_std(h, NULL, V4L2_CID_HBLANK, GC030A_HBLANK, GC030A_HBLANK, 1,
+			      GC030A_HBLANK);
+	if (c)
+		c->flags |= V4L2_CTRL_FLAG_READ_ONLY;
+	c = v4l2_ctrl_new_std(h, NULL, V4L2_CID_VBLANK, GC030A_VBLANK, GC030A_VBLANK, 1,
+			      GC030A_VBLANK);
+	if (c)
+		c->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 	s->gain = v4l2_ctrl_new_std(h, &gc030a_ctrl_ops, V4L2_CID_ANALOGUE_GAIN,
 				    GC030A_GAIN_MIN, GC030A_GAIN_MAX, 1, GC030A_GAIN_DEF);
 	v4l2_ctrl_new_std(h, NULL, V4L2_CID_PIXEL_RATE, GC030A_PIXEL_RATE,

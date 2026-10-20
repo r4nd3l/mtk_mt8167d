@@ -2,7 +2,7 @@
 pkgname=device-lenovo-tabe7
 pkgdesc="Lenovo Tab E7 (TB-7104F)"
 pkgver=0.1
-pkgrel=38
+pkgrel=40
 url="https://postmarketos.org"
 license="MIT"
 arch="aarch64"
@@ -39,6 +39,8 @@ source="deviceinfo
 	ucm-mt8167-mt6392.conf
 	ucm-HiFi.conf
 	powervr-modprobe.conf
+	libcamera-configuration.yaml
+	wireplumber-camera.conf
 	rogue_22.67.54.30_v1.fw
 	rogue_22.68.54.30_v1.fw
 	ROMv2_lm_patch_1_0_hdr.bin
@@ -85,6 +87,9 @@ package() {
 
 	# MT8167 connsys Wi-Fi/BT bring-up (manual start until proven stable)
 	install -Dm755 "$srcdir"/mtk-wifi.initd "$pkgdir"/etc/init.d/mtk-wifi
+	install -Dm644 "$srcdir"/libcamera-configuration.yaml "$pkgdir"/etc/libcamera/configuration.yaml
+	# apps get the camera through PipeWire: hide the raw camsv V4L2 node, back camera default
+	install -Dm644 "$srcdir"/wireplumber-camera.conf "$pkgdir"/usr/share/wireplumber/wireplumber.conf.d/90-lenovo-tabe7-camera.conf
 	install -Dm755 "$srcdir"/battery-gauge-state.initd "$pkgdir"/etc/init.d/battery-gauge-state
 	# USB role switch for host mode (no VBUS boost: powered OTG cable/hub only)
 	install -Dm755 "$srcdir"/usb-host-mode "$pkgdir"/usr/bin/usb-host-mode
@@ -141,6 +146,8 @@ f3d3811740442372c824d353bed2535daa9fa60f34e3e21ad202c8dd767ad05a9110350da06494d5
 a288dba84dbd54f4b0e803458cfe3b36eb0b791b27f2a95dc6df0c48553bfa891ef0c8f1eee406e0efb8cece29fe1184636c7a14b0af4c382379e2249455dc4b  ucm-mt8167-mt6392.conf
 85a60892451ac60bf44c5459004348b29d4f33ffbdb3551388b53fb5e7681d12b2510f965c8087ec620514762ac3cebeec2b1d1b38264ccf182d6bc95662e553  ucm-HiFi.conf
 8bdfd60bd037e98d5bc95fc8f8bdeb60337b1b97f475cfc61cbaef7b53e441150637d3de81bd5f8ea2a7d1351d6da433f38904bae11577bfefc2fd962917e361  powervr-modprobe.conf
+ed3d95953c799e652fef0bed5e7cf4475e99c3bf5d5a741ff6107d18a152221fde44a124ab96021e551379bd339795a27912021294aada8688ee787c21555e68  libcamera-configuration.yaml
+5ada17d81c826fb29df49c97265cc139975300196b243d2538beadb52be8bd4300c772826b57f9f3a4e8b0cdfb2802ac23fae97e2c1dd36609a55823f9fe0c97  wireplumber-camera.conf
 e48b992132d2ee2a824be9d2e270f3e858452cd34295624b3aa487103f0995909bbdce6cc75a70ee766a281b3bcdb59b2c567a44ac924e69bc57dd7209fb303b  rogue_22.67.54.30_v1.fw
 832dccc2a8fa159e546f3d47f0159497307f3c6807eb4de32043d752d2e714e61bbb616b8410f0f5b92b332605610dea8dad240f4ea7976325465a9a125734e7  rogue_22.68.54.30_v1.fw
 9abac0b2ea4fce1033b0832216ac81abc5006ae7267abfcd1fce5a5a885f3bd267f46d1ef0e1bf2efc912ee4e099b34eeb5bc7f1419e9137f908eba2ad696eb4  ROMv2_lm_patch_1_0_hdr.bin

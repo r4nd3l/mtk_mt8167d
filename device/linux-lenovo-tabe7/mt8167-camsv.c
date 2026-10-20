@@ -103,19 +103,28 @@ static uint ncsi2_settle = 0x2800;
 module_param(ncsi2_settle, uint, 0644);
 MODULE_PARM_DESC(ncsi2_settle, "NCSI2_LNRD_TIMING (HS settle), Coral: 0x2800");
 
+/*
+ * The PAK module writes 10-bit Bayer as MediaTek's own bitstream packing
+ * (40 bits per 4 pixels, pixel 0 in the low bits), not the MIPI CSI-2 layout
+ * behind V4L2_PIX_FMT_S*10P, and no common userspace reads that. So ask the
+ * ISP for 8-bit output (CAM_OUT_FMT 0, PAK drops the two LSBs) whatever the
+ * sensor sends: one byte per pixel, plain S*8 formats, libcamera and GStreamer
+ * are happy. ponytail: 10-bit output can come back as V4L2_PIX_FMT_MTISP_S*10
+ * once something consumes it.
+ */
 struct camsv_fmt {
 	u32 code;		/* media bus code from the sensor */
 	u32 fourcc;
-	u8 tg_fmt;		/* CAMCTL_FMT_SEL[18:16]: 0 raw8, 1 raw10 */
-	u8 bits;		/* TG_SEN_MODE[9:8]: 0 8-bit, 1 10-bit */
-	u8 bpp;			/* bits per pixel in memory (MIPI packed) */
+	u8 tg_fmt;		/* CAMCTL_FMT_SEL[18:16]: 0 raw8, 1 raw10 (sensor side) */
+	u8 out_fmt;		/* CAMCTL_FMT_SEL[15:12]: 0 bayer8 (memory side) */
+	u8 bpp;			/* bits per pixel in memory */
 };
 
 static const struct camsv_fmt camsv_fmts[] = {
-	{ MEDIA_BUS_FMT_SBGGR10_1X10, V4L2_PIX_FMT_SBGGR10P, 1, 1, 10 },
-	{ MEDIA_BUS_FMT_SGBRG10_1X10, V4L2_PIX_FMT_SGBRG10P, 1, 1, 10 },
-	{ MEDIA_BUS_FMT_SGRBG10_1X10, V4L2_PIX_FMT_SGRBG10P, 1, 1, 10 },
-	{ MEDIA_BUS_FMT_SRGGB10_1X10, V4L2_PIX_FMT_SRGGB10P, 1, 1, 10 },
+	{ MEDIA_BUS_FMT_SBGGR10_1X10, V4L2_PIX_FMT_SBGGR8, 1, 0, 8 },
+	{ MEDIA_BUS_FMT_SGBRG10_1X10, V4L2_PIX_FMT_SGBRG8, 1, 0, 8 },
+	{ MEDIA_BUS_FMT_SGRBG10_1X10, V4L2_PIX_FMT_SGRBG8, 1, 0, 8 },
+	{ MEDIA_BUS_FMT_SRGGB10_1X10, V4L2_PIX_FMT_SRGGB8, 1, 0, 8 },
 	{ MEDIA_BUS_FMT_SBGGR8_1X8, V4L2_PIX_FMT_SBGGR8, 0, 0, 8 },
 	{ MEDIA_BUS_FMT_SGBRG8_1X8, V4L2_PIX_FMT_SGBRG8, 0, 0, 8 },
 	{ MEDIA_BUS_FMT_SGRBG8_1X8, V4L2_PIX_FMT_SGRBG8, 0, 0, 8 },
@@ -328,8 +337,8 @@ static void camsv_hw_init(struct camsv *cs)
 	writel(0x00d8008c, c + CAMCTL_MUX_SEL);	/* BIN/SGG/AA/UNP sel + en */
 	writel(0x70180108, c + CAMCTL_MUX_SEL2);	/* BIN_OUT 2, IMGO sel, P1 done mux 0 */
 	writel(0x000634f7, c + CAMCTL_SRAM_MUX_CFG);
-	/* scenario 6 (N3D_IC), sub_mode RAW, CAM_OUT_FMT [15:12] and TG1_FMT [18:16]: 0 raw8, 1 raw10 */
-	writel(6 | cs->fmt->tg_fmt << 12 | cs->fmt->tg_fmt << 16, c + CAMCTL_FMT_SEL);
+	/* scenario 6 (N3D_IC), sub_mode RAW, CAM_OUT_FMT [15:12] (memory), TG1_FMT [18:16] (sensor) */
+	writel(6 | cs->fmt->out_fmt << 12 | cs->fmt->tg_fmt << 16, c + CAMCTL_FMT_SEL);
 	writel(0x80000000 | PASS1_DONE, c + CAMCTL_INT_EN);
 	writel(CTL_DMA_EN_IMGO_EN, c + CAMCTL_DMA_EN);
 
@@ -557,13 +566,24 @@ static int camsv_querycap(struct file *file, void *fh, struct v4l2_capability *c
 	return 0;
 }
 
+/*
+ * V4L2_CAP_IO_MC: libcamera asks for the pixel formats of a given media bus
+ * code (one each here); without a code, list everything the DMA can store.
+ */
 static int camsv_enum_fmt(struct file *file, void *fh, struct v4l2_fmtdesc *f)
 {
-	struct camsv *cs = video_drvdata(file);
+	const struct camsv_fmt *fmt;
 
-	if (f->index || !cs->fmt)
-		return -EINVAL;
-	f->pixelformat = cs->fmt->fourcc;
+	if (f->mbus_code) {
+		fmt = camsv_find_code(f->mbus_code);
+		if (!fmt || f->index)
+			return -EINVAL;
+	} else {
+		if (f->index >= ARRAY_SIZE(camsv_fmts))
+			return -EINVAL;
+		fmt = &camsv_fmts[f->index];
+	}
+	f->pixelformat = fmt->fourcc;
 	return 0;
 }
 
@@ -714,7 +734,7 @@ static int camsv_register_video(struct camsv *cs)
 	vd->queue = q;
 	vd->lock = &cs->lock;
 	vd->release = video_device_release_empty;
-	vd->device_caps = V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_STREAMING;
+	vd->device_caps = V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_STREAMING | V4L2_CAP_IO_MC;
 	vd->entity.function = MEDIA_ENT_F_IO_V4L;
 	vd->entity.ops = &camsv_entity_ops;
 	video_set_drvdata(vd, cs);

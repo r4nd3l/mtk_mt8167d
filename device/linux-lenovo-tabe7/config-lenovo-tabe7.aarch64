@@ -4089,7 +4089,7 @@ CONFIG_LEDS_GPIO=y
 #
 # LED Triggers
 #
-# CONFIG_LEDS_TRIGGERS is not set
+CONFIG_LEDS_TRIGGERS=y
 
 #
 # Simatic LED drivers

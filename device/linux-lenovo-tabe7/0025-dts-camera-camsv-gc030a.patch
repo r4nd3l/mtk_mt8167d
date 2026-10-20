@@ -53,7 +53,7 @@
  };
  
  /* With the firmware on Android devices, cores don't seem to come back after out
-@@ -282,7 +328,45 @@
+@@ -282,7 +328,48 @@
  	pinctrl-0 = <&i2c_pins_2>;
  	clock-div = <2>;
  
@@ -70,6 +70,7 @@
 +		avdd-supply = <&mt6392_vcama_reg>;
 +		dvdd-supply = <&mt6392_vcamd_reg>;
 +		powerdown-gpios = <&pio 51 GPIO_ACTIVE_HIGH>;
++		orientation = <0>;	/* V4L2_FWNODE_ORIENTATION_FRONT */
 +
 +		port {
 +			gc030a_out: endpoint {
@@ -88,6 +89,8 @@
 +		avdd-supply = <&mt6392_vcama_reg>;
 +		dvdd-supply = <&mt6392_vcamd_reg>;
 +		powerdown-gpios = <&pio 48 GPIO_ACTIVE_HIGH>;
++		rotation = <180>;	/* module mounted upside down, libcamera reads this */
++		orientation = <1>;	/* V4L2_FWNODE_ORIENTATION_BACK */
 +
 +		port {
 +			gc2375h_out: endpoint {
@@ -100,7 +103,7 @@
  };
  
  &mmc0 {
-@@ -504,6 +588,20 @@
+@@ -504,6 +591,20 @@
  			slew-rate = <1>;
  		};
  	};
@@ -121,7 +124,7 @@
  };
  
  &keypad {
-@@ -773,3 +871,9 @@
+@@ -773,3 +874,9 @@
  &gpu {
  	status = "okay";
  };

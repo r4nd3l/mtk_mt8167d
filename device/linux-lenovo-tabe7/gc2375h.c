@@ -34,10 +34,17 @@
 
 #define GC2375H_WIDTH		1600
 #define GC2375H_HEIGHT		1200
-#define GC2375H_PIXEL_RATE	45500000
-#define GC2375H_LINK_FREQ	227500000	/* RAW10, 1 lane: 45.5 Mpx * 10 / 2 */
-#define GC2375H_LINE_LENGTH	1040
+/*
+ * Vendor: pclk 45.5 MHz, line length 1040 "clocks", 1456 lines, 30 fps.
+ * 1040 clocks carry 1600 pixels, so the pixel rate is 2 px/clock = 91 MHz and
+ * a line is 2080 pixels; libcamera wants blanking in pixels and lines.
+ */
+#define GC2375H_PIXEL_RATE	91000000
+#define GC2375H_LINK_FREQ	227500000	/* RAW10, 1 lane: 91 Mpx * 10 / 2 / 2 (DDR) */
+#define GC2375H_LINE_LENGTH	2080
 #define GC2375H_FRAME_LENGTH	1456
+#define GC2375H_HBLANK		(GC2375H_LINE_LENGTH - GC2375H_WIDTH)
+#define GC2375H_VBLANK		(GC2375H_FRAME_LENGTH - GC2375H_HEIGHT)
 #define GC2375H_EXP_MAX		(GC2375H_FRAME_LENGTH - 16)
 #define GC2375H_EXP_DEF		0x465
 #define GC2375H_GAIN_MIN	64	/* 1.0x, units of 1/64 */
@@ -314,9 +321,27 @@ static int gc2375h_init_controls(struct gc2375h *s)
 	struct v4l2_ctrl_handler *h = &s->ctrls;
 	struct v4l2_ctrl *c;
 
-	v4l2_ctrl_handler_init(h, 4);
+	struct v4l2_fwnode_device_properties props;
+	int ret;
+
+	v4l2_ctrl_handler_init(h, 8);
 	v4l2_ctrl_new_std(h, &gc2375h_ctrl_ops, V4L2_CID_EXPOSURE, 1, GC2375H_EXP_MAX, 1,
 			  GC2375H_EXP_DEF);
+	/* rotation and orientation from the DT node, libcamera reads them as controls */
+	ret = v4l2_fwnode_device_parse(s->sd.dev, &props);
+	if (!ret)
+		ret = v4l2_ctrl_new_fwnode_properties(h, &gc2375h_ctrl_ops, &props);
+	dev_info(s->sd.dev, "fwnode props: ret=%d rotation=%u orientation=%u ctrl err=%d\n",
+		 ret, props.rotation, props.orientation, h->error);
+	/* fixed mode: blanking is read-only, libcamera needs it for frame timing */
+	c = v4l2_ctrl_new_std(h, NULL, V4L2_CID_HBLANK, GC2375H_HBLANK, GC2375H_HBLANK, 1,
+			      GC2375H_HBLANK);
+	if (c)
+		c->flags |= V4L2_CTRL_FLAG_READ_ONLY;
+	c = v4l2_ctrl_new_std(h, NULL, V4L2_CID_VBLANK, GC2375H_VBLANK, GC2375H_VBLANK, 1,
+			      GC2375H_VBLANK);
+	if (c)
+		c->flags |= V4L2_CTRL_FLAG_READ_ONLY;
 	v4l2_ctrl_new_std(h, &gc2375h_ctrl_ops, V4L2_CID_ANALOGUE_GAIN, GC2375H_GAIN_MIN,
 			  GC2375H_GAIN_MAX, 1, GC2375H_GAIN_DEF);
 	v4l2_ctrl_new_std(h, NULL, V4L2_CID_PIXEL_RATE, GC2375H_PIXEL_RATE,

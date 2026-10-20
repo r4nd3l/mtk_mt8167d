@@ -1,0 +1,11 @@
+--- a/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
++++ b/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
+@@ -128,6 +128,8 @@
+ 			color = <LED_COLOR_ID_RED>;
+ 			function = LED_FUNCTION_CHARGING;
+ 			gpios = <&pio 56 GPIO_ACTIVE_HIGH>;
++			/* the MT6392 battery supply: on while charging, stays on when full */
++			linux,default-trigger = "mt6392-battery-charging-or-full";
+ 			default-state = "off";
+ 			retain-state-suspended;
+ 

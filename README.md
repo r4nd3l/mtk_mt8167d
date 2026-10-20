@@ -44,9 +44,19 @@ Working:
   SMI larb1 MMU is bypassed (physical DMA, no iommus: attaching the M4U
   garbles the LK framebuffer while the panel runs on simpledrm) and the
   SENINF mux runs in one-pixel mode. Sensor drivers `gc2375h` and `gc030a`
-  share one CSI port, `media-ctl -l` picks the active one. RAW only for now:
-  no auto exposure, white balance or demosaic (libcamera's software ISP is
-  the plan)
+  share one CSI port, `media-ctl -l` picks the active one. The driver
+  outputs 8-bit Bayer (the IMGO "PAK" RAW10 is MediaTek bitstream packing,
+  not CSI2P) and sets `V4L2_CAP_IO_MC` so libcamera can filter formats
+- Camera userspace: libcamera's simple pipeline with the software ISP in CPU
+  mode (`device/libcamera`: the camsv entry in `supportedDevices`, and
+  `/etc/libcamera/configuration.yaml` since the eGL path on llvmpipe is too
+  slow). The sensors expose `rotation`/`orientation` from DT as V4L2
+  controls (`v4l2_ctrl_new_fwnode_properties`; note `orientation` is a
+  number in DT, 0 front / 1 back). GNOME Snapshot shows a live, upright
+  viewfinder through PipeWire: a WirePlumber drop-in hides the raw camsv
+  V4L2 node (Bayer, no ISP) and makes the back camera the default source
+- Charging LED (GPIO56) follows the MT6392 battery supply through a LED
+  trigger (`linux,default-trigger`)
 - BMA253 accelerometer and rotation, cpufreq + thermal throttling, RTC
 - Audio: speaker (the external amp sits on the left headphone channel, mono
   UCM), memif format fix, both volume keys; headphone plug detection on GPIO19
@@ -72,8 +82,10 @@ Not yet:
 - mediatek-drm instead of simpledrm (DSI comes up only about half the time
   on MT8167, per Luca)
 - Front camera (GC030A): the sensor streams but the receiver sees nothing,
-  it sits on the other CSI port and that routing is not found yet
-- Camera userspace: libcamera + software ISP, a camera app in Phosh
+  it sits on the other CSI port and that routing is not found yet (its
+  PipeWire node is hidden until then)
+- Camera tuning: no sensor-specific IPA tuning file yet, exposure/gain come
+  from the generic software ISP AGC
 
 ### Firmware is not in this repository
 
@@ -102,7 +114,8 @@ pmbootstrap flasher flash_kernel
 ```
 
 The packages in `device/` go into a pmaports checkout under
-`device/testing/`. Once a pmOS install is running, `scripts/flash-latest.sh`
+`device/testing/`, except `device/libcamera`, which holds only the pkgrel
+bump and the extra patch applied on top of pmaports' `temp/libcamera`. Once a pmOS install is running, `scripts/flash-latest.sh`
 installs freshly built packages over ssh and writes the boot.img that
 the tablet itself just generated (`T=<ssh host>` to use Wi-Fi instead of USB).
 

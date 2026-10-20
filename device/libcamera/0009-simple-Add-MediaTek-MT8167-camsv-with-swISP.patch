@@ -1,0 +1,18 @@
+From: Mate Molnar <matemolnar88@gmail.com>
+Date: Tue, 20 Oct 2026 11:30:00 +0200
+Subject: [PATCH 9/9] simple: Add MediaTek MT8167 camsv (Lenovo Tab E7) with swISP
+
+The mt8167-camsv driver captures RAW Bayer straight from the SENINF/ISP
+pass1 path, no hardware ISP: use the software ISP.
+
+---
+--- a/src/libcamera/pipeline/simple/simple.cpp
++++ b/src/libcamera/pipeline/simple/simple.cpp
+@@ -261,6 +261,7 @@
+ 	{ "intel-ipu6", {}, true },
+ 	{ "intel-ipu7", {}, true },
+ 	{ "j721e-csi2rx", {}, true },
++	{ "mt8167-camsv", {}, true },
+ 	{ "mtk-seninf", { { "mtk-mdp", 3 } }, false },
+ 	{ "mxc-isi", {}, false },
+ 	{ "qcom-camss", {}, true },
