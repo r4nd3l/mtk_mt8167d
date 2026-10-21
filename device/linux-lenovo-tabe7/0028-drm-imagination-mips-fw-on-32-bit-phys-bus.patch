@@ -1,0 +1,61 @@
+From: Mate Molnar <matemolnar88@gmail.com>
+Date: Wed, 21 Oct 2026 10:00:00 +0200
+Subject: [PATCH] drm/imagination: allow MIPS firmware on 32-bit physical bus cores
+
+pvr_mips_wrapper_init() refused cores with phys_bus_width <= 32. The only
+boot-time difference on such cores in the vendor DDK (1.9,
+RGXInitMipsProcWrapper) is the MIPS wrapper register bank address: it is
+the physical address of the GPU register block instead of the firmware's
+virtual register base. The MIPS page table entry format for 32-bit cores
+(PFN mask, cache policy) is already handled by pvr_vm_mips.c.
+
+Needed for the PowerVR GE8300 (BVNC 22.V.54.30, PBW 32) in MediaTek MT8167.
+---
+--- a/drivers/gpu/drm/imagination/pvr_fw_mips.c
++++ b/drivers/gpu/drm/imagination/pvr_fw_mips.c
+@@ -105,14 +105,24 @@
+ 	if (WARN_ON(err))
+ 		return err;
+ 
+-	/* Currently MIPS FW only supported with physical bus width > 32 bits. */
+-	if (WARN_ON(phys_bus_width <= 32))
+-		return -EINVAL;
+-
+-	pvr_cr_write32(pvr_dev, ROGUE_CR_MIPS_WRAPPER_CONFIG,
+-		       (ROGUE_MIPSFW_REGISTERS_VIRTUAL_BASE >>
+-			ROGUE_MIPSFW_WRAPPER_CONFIG_REGBANK_ADDR_ALIGN) |
+-		       ROGUE_CR_MIPS_WRAPPER_CONFIG_BOOT_ISA_MODE_MICROMIPS);
++	/*
++	 * The register bank address programmed into the MIPS wrapper is the
++	 * firmware's virtual register base on cores with a physical bus wider
++	 * than 32 bits. On 32-bit cores (e.g. GE8300, 22.V.54.30) the vendor
++	 * driver programs the physical address of the GPU register block
++	 * instead (RGXInitMipsProcWrapper, PBW <= 32 branch); the page table
++	 * entry format for these cores is already handled in pvr_vm_mips.c.
++	 */
++	if (phys_bus_width > 32)
++		pvr_cr_write32(pvr_dev, ROGUE_CR_MIPS_WRAPPER_CONFIG,
++			       (ROGUE_MIPSFW_REGISTERS_VIRTUAL_BASE >>
++				ROGUE_MIPSFW_WRAPPER_CONFIG_REGBANK_ADDR_ALIGN) |
++			       ROGUE_CR_MIPS_WRAPPER_CONFIG_BOOT_ISA_MODE_MICROMIPS);
++	else
++		pvr_cr_write64(pvr_dev, ROGUE_CR_MIPS_WRAPPER_CONFIG,
++			       ((u64)pvr_dev->regs_resource->start >>
++				ROGUE_MIPSFW_WRAPPER_CONFIG_REGBANK_ADDR_ALIGN) |
++			       ROGUE_CR_MIPS_WRAPPER_CONFIG_BOOT_ISA_MODE_MICROMIPS);
+ 
+ 	/* Configure remap for boot code, boot data and exceptions code areas. */
+ 	pvr_cr_write64(pvr_dev, ROGUE_CR_MIPS_ADDR_REMAP1_CONFIG1,
+@@ -125,10 +135,9 @@
+ 	if (PVR_HAS_QUIRK(pvr_dev, 63553)) {
+ 		/*
+ 		 * WA always required on 36 bit cores, to avoid continuous unmapped memory accesses
+-		 * to address 0x0.
++		 * to address 0x0. 32-bit cores (22.V.54.30) carry the same BRN and the vendor
++		 * driver applies the same remap there.
+ 		 */
+-		WARN_ON(phys_bus_width != 36);
+-
+ 		pvr_cr_write64(pvr_dev, ROGUE_CR_MIPS_ADDR_REMAP5_CONFIG1,
+ 			       ROGUE_CR_MIPS_ADDR_REMAP5_CONFIG1_MODE_ENABLE_EN);
+ 		pvr_cr_write64(pvr_dev, ROGUE_CR_MIPS_ADDR_REMAP5_CONFIG2,

@@ -3,7 +3,7 @@
 
 pkgname=linux-lenovo-tabe7
 pkgver=7.3.0_rc5
-pkgrel=67
+pkgrel=68
 pkgdesc="Lenovo Tab E7 (TB-7104F) kernel fork"
 arch="aarch64"
 _carch="arm64"
@@ -53,6 +53,7 @@ source="
 	0025-dts-camera-camsv-gc030a.patch
 	0026-media-mt8167-camsv-gc030a-kconfig.patch
 	0027-dts-charging-led-trigger.patch
+	0028-drm-imagination-mips-fw-on-32-bit-phys-bus.patch
 "
 builddir="$srcdir/linux-$_commit"
 
@@ -133,4 +134,5 @@ c62703c9a955e3f3296ade97f8f189d12a4b73e2a3fface4bc5db9cbd93829ec639d12466fa7c89d
 370fa0fa71f14525f88e90174ceb1cf73b65fefb38e9a4d49a5b20be77fad104efcdb504cb1b867f95c9d1c52eb77ec656065564cd2d1aa9700404a074fb4215  0025-dts-camera-camsv-gc030a.patch
 71b0fed9fd1af9927c5eb0bdf12da560f56b8fefdb75c5b01bb167046acb9817f7873a0640048921be65ba459dedb27b89b4b0f5aa0445e186d5a0176413d27d  0026-media-mt8167-camsv-gc030a-kconfig.patch
 1595dbc495cdf8ed5df039bcf80ed4625c9d3a04f41958641346f5c9895177f9b42c153991ccf7498c8f4f2c74fcf02d823c704102d3d65a1d76b104f6dac827  0027-dts-charging-led-trigger.patch
+679b067c28be4e9b59e6b4b7c3c3940abb1e8db720525bf9d9eacc7ff8b2d1813a7bec7330ed1f99b63705f592109d0a79e6ebf7725e522157e8b483a72b3ffb  0028-drm-imagination-mips-fw-on-32-bit-phys-bus.patch
 "
