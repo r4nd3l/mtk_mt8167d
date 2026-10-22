@@ -1,0 +1,12 @@
+#!/bin/sh
+# Run one Vulkan app on the PowerVR GE8300: gpu-run vkcube --wsi wayland
+# Not a global default on purpose: with these set, GTK4 picks its Vulkan
+# renderer (no GL here), which is 4-8x slower than cairo on this driver.
+# MESA_VK_WSI_DEBUG=sw: phoc (pixman on simpledrm) offers no linux-dmabuf,
+# so frames reach the compositor through a CPU copy into wl_shm.
+if [ ! -e /dev/dri/renderD128 ]; then
+	echo "gpu-run: powervr is not loaded (still blacklisted): sudo modprobe powervr" >&2
+	exit 1
+fi
+export PVR_I_WANT_A_BROKEN_VULKAN_DRIVER=1 MESA_VK_WSI_DEBUG=sw
+exec "$@"

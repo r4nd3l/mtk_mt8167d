@@ -1,0 +1,202 @@
+container {
+  color { bounds: 0 0 1024 616; color: #fafafa; }
+  linear-gradient { bounds: 0 0 1024 46; start: 0 0; end: 0 46; stops: 0 #ffffff, 1 #e8e8e8; }
+  outset-shadow { outline: 16 60 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 16 60 116 58 / 8; child: color { bounds: 16 60 116 58; color: #dde0e6; } }
+  border { outline: 16 60 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 0"; offset: 40 96; color: #303030; }
+  outset-shadow { outline: 142 60 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 142 60 116 58 / 8; child: color { bounds: 142 60 116 58; color: #dde0e6; } }
+  border { outline: 142 60 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 1"; offset: 166 96; color: #303030; }
+  outset-shadow { outline: 268 60 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 268 60 116 58 / 8; child: color { bounds: 268 60 116 58; color: #dde0e6; } }
+  border { outline: 268 60 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 2"; offset: 292 96; color: #303030; }
+  outset-shadow { outline: 394 60 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 394 60 116 58 / 8; child: color { bounds: 394 60 116 58; color: #dde0e6; } }
+  border { outline: 394 60 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 3"; offset: 418 96; color: #303030; }
+  outset-shadow { outline: 520 60 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 520 60 116 58 / 8; child: color { bounds: 520 60 116 58; color: #dde0e6; } }
+  border { outline: 520 60 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 4"; offset: 544 96; color: #303030; }
+  outset-shadow { outline: 646 60 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 646 60 116 58 / 8; child: color { bounds: 646 60 116 58; color: #dde0e6; } }
+  border { outline: 646 60 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 5"; offset: 670 96; color: #303030; }
+  outset-shadow { outline: 772 60 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 772 60 116 58 / 8; child: color { bounds: 772 60 116 58; color: #dde0e6; } }
+  border { outline: 772 60 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 6"; offset: 796 96; color: #303030; }
+  outset-shadow { outline: 898 60 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 898 60 116 58 / 8; child: color { bounds: 898 60 116 58; color: #dde0e6; } }
+  border { outline: 898 60 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 7"; offset: 922 96; color: #303030; }
+  outset-shadow { outline: 16 130 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 16 130 116 58 / 8; child: color { bounds: 16 130 116 58; color: #e0e0e6; } }
+  border { outline: 16 130 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 8"; offset: 40 166; color: #303030; }
+  outset-shadow { outline: 142 130 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 142 130 116 58 / 8; child: color { bounds: 142 130 116 58; color: #e0e0e6; } }
+  border { outline: 142 130 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 9"; offset: 166 166; color: #303030; }
+  outset-shadow { outline: 268 130 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 268 130 116 58 / 8; child: color { bounds: 268 130 116 58; color: #e0e0e6; } }
+  border { outline: 268 130 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 10"; offset: 292 166; color: #303030; }
+  outset-shadow { outline: 394 130 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 394 130 116 58 / 8; child: color { bounds: 394 130 116 58; color: #e0e0e6; } }
+  border { outline: 394 130 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 11"; offset: 418 166; color: #303030; }
+  outset-shadow { outline: 520 130 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 520 130 116 58 / 8; child: color { bounds: 520 130 116 58; color: #e0e0e6; } }
+  border { outline: 520 130 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 12"; offset: 544 166; color: #303030; }
+  outset-shadow { outline: 646 130 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 646 130 116 58 / 8; child: color { bounds: 646 130 116 58; color: #e0e0e6; } }
+  border { outline: 646 130 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 13"; offset: 670 166; color: #303030; }
+  outset-shadow { outline: 772 130 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 772 130 116 58 / 8; child: color { bounds: 772 130 116 58; color: #e0e0e6; } }
+  border { outline: 772 130 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 14"; offset: 796 166; color: #303030; }
+  outset-shadow { outline: 898 130 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 898 130 116 58 / 8; child: color { bounds: 898 130 116 58; color: #e0e0e6; } }
+  border { outline: 898 130 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 15"; offset: 922 166; color: #303030; }
+  outset-shadow { outline: 16 200 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 16 200 116 58 / 8; child: color { bounds: 16 200 116 58; color: #e3e0e6; } }
+  border { outline: 16 200 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 16"; offset: 40 236; color: #303030; }
+  outset-shadow { outline: 142 200 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 142 200 116 58 / 8; child: color { bounds: 142 200 116 58; color: #e3e0e6; } }
+  border { outline: 142 200 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 17"; offset: 166 236; color: #303030; }
+  outset-shadow { outline: 268 200 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 268 200 116 58 / 8; child: color { bounds: 268 200 116 58; color: #e3e0e6; } }
+  border { outline: 268 200 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 18"; offset: 292 236; color: #303030; }
+  outset-shadow { outline: 394 200 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 394 200 116 58 / 8; child: color { bounds: 394 200 116 58; color: #e3e0e6; } }
+  border { outline: 394 200 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 19"; offset: 418 236; color: #303030; }
+  outset-shadow { outline: 520 200 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 520 200 116 58 / 8; child: color { bounds: 520 200 116 58; color: #e3e0e6; } }
+  border { outline: 520 200 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 20"; offset: 544 236; color: #303030; }
+  outset-shadow { outline: 646 200 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 646 200 116 58 / 8; child: color { bounds: 646 200 116 58; color: #e3e0e6; } }
+  border { outline: 646 200 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 21"; offset: 670 236; color: #303030; }
+  outset-shadow { outline: 772 200 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 772 200 116 58 / 8; child: color { bounds: 772 200 116 58; color: #e3e0e6; } }
+  border { outline: 772 200 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 22"; offset: 796 236; color: #303030; }
+  outset-shadow { outline: 898 200 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 898 200 116 58 / 8; child: color { bounds: 898 200 116 58; color: #e3e0e6; } }
+  border { outline: 898 200 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 23"; offset: 922 236; color: #303030; }
+  outset-shadow { outline: 16 270 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 16 270 116 58 / 8; child: color { bounds: 16 270 116 58; color: #e6e0e6; } }
+  border { outline: 16 270 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 24"; offset: 40 306; color: #303030; }
+  outset-shadow { outline: 142 270 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 142 270 116 58 / 8; child: color { bounds: 142 270 116 58; color: #e6e0e6; } }
+  border { outline: 142 270 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 25"; offset: 166 306; color: #303030; }
+  outset-shadow { outline: 268 270 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 268 270 116 58 / 8; child: color { bounds: 268 270 116 58; color: #e6e0e6; } }
+  border { outline: 268 270 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 26"; offset: 292 306; color: #303030; }
+  outset-shadow { outline: 394 270 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 394 270 116 58 / 8; child: color { bounds: 394 270 116 58; color: #e6e0e6; } }
+  border { outline: 394 270 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 27"; offset: 418 306; color: #303030; }
+  outset-shadow { outline: 520 270 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 520 270 116 58 / 8; child: color { bounds: 520 270 116 58; color: #e6e0e6; } }
+  border { outline: 520 270 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 28"; offset: 544 306; color: #303030; }
+  outset-shadow { outline: 646 270 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 646 270 116 58 / 8; child: color { bounds: 646 270 116 58; color: #e6e0e6; } }
+  border { outline: 646 270 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 29"; offset: 670 306; color: #303030; }
+  outset-shadow { outline: 772 270 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 772 270 116 58 / 8; child: color { bounds: 772 270 116 58; color: #e6e0e6; } }
+  border { outline: 772 270 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 30"; offset: 796 306; color: #303030; }
+  outset-shadow { outline: 898 270 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 898 270 116 58 / 8; child: color { bounds: 898 270 116 58; color: #e6e0e6; } }
+  border { outline: 898 270 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 31"; offset: 922 306; color: #303030; }
+  outset-shadow { outline: 16 340 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 16 340 116 58 / 8; child: color { bounds: 16 340 116 58; color: #e9e0e6; } }
+  border { outline: 16 340 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 32"; offset: 40 376; color: #303030; }
+  outset-shadow { outline: 142 340 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 142 340 116 58 / 8; child: color { bounds: 142 340 116 58; color: #e9e0e6; } }
+  border { outline: 142 340 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 33"; offset: 166 376; color: #303030; }
+  outset-shadow { outline: 268 340 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 268 340 116 58 / 8; child: color { bounds: 268 340 116 58; color: #e9e0e6; } }
+  border { outline: 268 340 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 34"; offset: 292 376; color: #303030; }
+  outset-shadow { outline: 394 340 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 394 340 116 58 / 8; child: color { bounds: 394 340 116 58; color: #e9e0e6; } }
+  border { outline: 394 340 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 35"; offset: 418 376; color: #303030; }
+  outset-shadow { outline: 520 340 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 520 340 116 58 / 8; child: color { bounds: 520 340 116 58; color: #e9e0e6; } }
+  border { outline: 520 340 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 36"; offset: 544 376; color: #303030; }
+  outset-shadow { outline: 646 340 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 646 340 116 58 / 8; child: color { bounds: 646 340 116 58; color: #e9e0e6; } }
+  border { outline: 646 340 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 37"; offset: 670 376; color: #303030; }
+  outset-shadow { outline: 772 340 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 772 340 116 58 / 8; child: color { bounds: 772 340 116 58; color: #e9e0e6; } }
+  border { outline: 772 340 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 38"; offset: 796 376; color: #303030; }
+  outset-shadow { outline: 898 340 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 898 340 116 58 / 8; child: color { bounds: 898 340 116 58; color: #e9e0e6; } }
+  border { outline: 898 340 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 39"; offset: 922 376; color: #303030; }
+  outset-shadow { outline: 16 410 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 16 410 116 58 / 8; child: color { bounds: 16 410 116 58; color: #ece0e6; } }
+  border { outline: 16 410 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 40"; offset: 40 446; color: #303030; }
+  outset-shadow { outline: 142 410 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 142 410 116 58 / 8; child: color { bounds: 142 410 116 58; color: #ece0e6; } }
+  border { outline: 142 410 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 41"; offset: 166 446; color: #303030; }
+  outset-shadow { outline: 268 410 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 268 410 116 58 / 8; child: color { bounds: 268 410 116 58; color: #ece0e6; } }
+  border { outline: 268 410 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 42"; offset: 292 446; color: #303030; }
+  outset-shadow { outline: 394 410 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 394 410 116 58 / 8; child: color { bounds: 394 410 116 58; color: #ece0e6; } }
+  border { outline: 394 410 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 43"; offset: 418 446; color: #303030; }
+  outset-shadow { outline: 520 410 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 520 410 116 58 / 8; child: color { bounds: 520 410 116 58; color: #ece0e6; } }
+  border { outline: 520 410 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 44"; offset: 544 446; color: #303030; }
+  outset-shadow { outline: 646 410 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 646 410 116 58 / 8; child: color { bounds: 646 410 116 58; color: #ece0e6; } }
+  border { outline: 646 410 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 45"; offset: 670 446; color: #303030; }
+  outset-shadow { outline: 772 410 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 772 410 116 58 / 8; child: color { bounds: 772 410 116 58; color: #ece0e6; } }
+  border { outline: 772 410 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 46"; offset: 796 446; color: #303030; }
+  outset-shadow { outline: 898 410 116 58 / 8; color: rgba(0,0,0,0.25); dx: 0; dy: 2; spread: 0; blur: 6; }
+  rounded-clip { clip: 898 410 116 58 / 8; child: color { bounds: 898 410 116 58; color: #ece0e6; } }
+  border { outline: 898 410 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  text { font: "Cantarell 15"; glyphs: "Gomb 47"; offset: 922 446; color: #303030; }
+  text { font: "Cantarell 12"; glyphs: "Lorem ipsum dolor sit amet, consectetur adipiscing elit 0"; offset: 20 500; color: #202020; }
+  text { font: "Cantarell 12"; glyphs: "Lorem ipsum dolor sit amet, consectetur adipiscing elit 1"; offset: 20 518; color: #202020; }
+  text { font: "Cantarell 12"; glyphs: "Lorem ipsum dolor sit amet, consectetur adipiscing elit 2"; offset: 20 536; color: #202020; }
+  text { font: "Cantarell 12"; glyphs: "Lorem ipsum dolor sit amet, consectetur adipiscing elit 3"; offset: 20 554; color: #202020; }
+  text { font: "Cantarell 12"; glyphs: "Lorem ipsum dolor sit amet, consectetur adipiscing elit 4"; offset: 20 572; color: #202020; }
+  text { font: "Cantarell 12"; glyphs: "Lorem ipsum dolor sit amet, consectetur adipiscing elit 5"; offset: 20 590; color: #202020; }
+}

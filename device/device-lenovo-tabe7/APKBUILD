@@ -2,7 +2,7 @@
 pkgname=device-lenovo-tabe7
 pkgdesc="Lenovo Tab E7 (TB-7104F)"
 pkgver=0.1
-pkgrel=43
+pkgrel=44
 url="https://postmarketos.org"
 license="MIT"
 arch="aarch64"
@@ -39,6 +39,7 @@ source="deviceinfo
 	ucm-mt8167-mt6392.conf
 	ucm-HiFi.conf
 	powervr-modprobe.conf
+	gpu-run
 	libcamera-configuration.yaml
 	wireplumber-camera.conf
 	rogue_22.67.54.30_v1.fw
@@ -107,6 +108,7 @@ package() {
 		"$pkgdir"/usr/share/alsa/ucm2/conf.d/mt8167-mt6392/HiFi.conf
 	install -Dm644 "$srcdir"/powervr-modprobe.conf \
 		"$pkgdir"/etc/modprobe.d/powervr.conf
+	install -Dm755 "$srcdir"/gpu-run "$pkgdir"/usr/bin/gpu-run
 }
 
 nonfree_firmware() {
@@ -146,6 +148,7 @@ f3d3811740442372c824d353bed2535daa9fa60f34e3e21ad202c8dd767ad05a9110350da06494d5
 a288dba84dbd54f4b0e803458cfe3b36eb0b791b27f2a95dc6df0c48553bfa891ef0c8f1eee406e0efb8cece29fe1184636c7a14b0af4c382379e2249455dc4b  ucm-mt8167-mt6392.conf
 85a60892451ac60bf44c5459004348b29d4f33ffbdb3551388b53fb5e7681d12b2510f965c8087ec620514762ac3cebeec2b1d1b38264ccf182d6bc95662e553  ucm-HiFi.conf
 f510c3f2932bf48f62208c08d43aaa894a690835ddf164408ceaf9dd3a60841b4a819aff58b2b366e5783087b20ccaa1aa18148f2e82a32bf37fd57b15a50142  powervr-modprobe.conf
+e558de71d5fa85257a802cd4e71a3034d159ff2c077b70c24dfc244381b20a0c6f26d63f3fd36375728cb584557046ebdd9af44aeeef0bb8181b1549d0ce7d4c  gpu-run
 dd554fd228bdd053ad7b50231d736a8f5db6d81fa0e25a6bdf09179fa1f6a9ca586a6a3c33623966930feb09e1de652122f58c2acfc3d9e7fd34a1fb30c1c3db  libcamera-configuration.yaml
 5ada17d81c826fb29df49c97265cc139975300196b243d2538beadb52be8bd4300c772826b57f9f3a4e8b0cdfb2802ac23fae97e2c1dd36609a55823f9fe0c97  wireplumber-camera.conf
 e48b992132d2ee2a824be9d2e270f3e858452cd34295624b3aa487103f0995909bbdce6cc75a70ee766a281b3bcdb59b2c567a44ac924e69bc57dd7209fb303b  rogue_22.67.54.30_v1.fw
