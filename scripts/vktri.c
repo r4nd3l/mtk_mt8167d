@@ -205,6 +205,12 @@ int main(int argc, char **argv)
 		}
 		fclose(f);
 	}
+	/* tear down so the driver frees (and can debug-dump) the render target */
+	vkDeviceWaitIdle(dev);
+	vkDestroyFramebuffer(dev, fb, NULL);
+	vkDestroyRenderPass(dev, rp, NULL);
+	vkDestroyDevice(dev, NULL);
+
 	int ok = (centre & 0x00ffffff) == 0x000000ff && (corner & 0x00ffffff) == 0x00400000 && inside > W * H / 4;
 	puts(ok ? "PASS: triangle rendered" : "FAIL");
 	return ok ? 0 : 3;

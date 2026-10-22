@@ -1,0 +1,27 @@
+From: Mate Molnar <matemolnar88@gmail.com>
+Date: Thu, 22 Oct 2026 20:30:00 +0200
+Subject: [PATCH] pvr: debug knob PVR_V1_RCLIP_SCALE for the TA region clip (experiment)
+
+---
+--- a/src/imagination/vulkan/pvr_arch_cmd_buffer.c
++++ b/src/imagination/vulkan/pvr_arch_cmd_buffer.c
+@@ -7168,6 +7168,19 @@
+       else
+          bottom = 0U;
+ 
++      /* ponytail: debug knob for the GE8300 half-per-axis coverage:
++       * PVR_V1_RCLIP_SCALE=2 scales the region clip right/bottom.
++       */
++      {
++         const char *e = getenv("PVR_V1_RCLIP_SCALE");
++         const uint32_t scale = e ? (uint32_t)atoi(e) : 1U;
++
++         if (scale > 1U) {
++            right = MIN2((right + 1U) * scale - 1U, ROGUE_TA_REGION_CLIP_MAX);
++            bottom = MIN2((bottom + 1U) * scale - 1U, ROGUE_TA_REGION_CLIP_MAX);
++         }
++      }
++
+       /* Setup region clip to clip everything outside what was calculated. */
+ 
+       /* FIXME: Should we mask to prevent writing over other words? */

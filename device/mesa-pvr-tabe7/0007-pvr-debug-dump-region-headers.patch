@@ -1,0 +1,94 @@
+From: Mate Molnar <matemolnar88@gmail.com>
+Date: Thu, 22 Oct 2026 21:10:00 +0200
+Subject: [PATCH] pvr: debug dump of region headers and TPC (PVR_DUMP_RGN, experiment)
+
+---
+--- a/src/imagination/vulkan/pvr_rt_dataset.c
++++ b/src/imagination/vulkan/pvr_rt_dataset.c
+@@ -9,8 +9,55 @@
+ #include "pvr_device.h"
+ #include "pvr_free_list.h"
+ 
++#include <stdio.h>
++#include <stdlib.h>
++
++/* ponytail: debug dump for the GE8300 half-per-axis coverage investigation.
++ * PVR_DUMP_RGN=<bytes> hex-dumps the start of a buffer at dataset teardown.
++ */
++static void pvr_debug_dump_bo(struct pvr_device *device, struct pvr_bo *bo,
++                              const char *name, uint32_t line_bytes)
++{
++   const char *e = getenv("PVR_DUMP_RGN");
++   bool mapped = false;
++   uint64_t n;
++
++   if (!e)
++      return;
++
++   fprintf(stderr, "DUMP %s bo=%p\n", name, (void *)bo);
++   if (!bo)
++      return;
++
++   n = MIN2((uint64_t)atoi(e), bo->bo->size);
++   fprintf(stderr, "DUMP %s size=%llu map=%p\n", name,
++           (unsigned long long)bo->bo->size, bo->bo->map);
++   if (!bo->bo->map) {
++      VkResult r = pvr_bo_cpu_map(device, bo);
++
++      if (r != VK_SUCCESS) {
++         fprintf(stderr, "DUMP %s map failed %d\n", name, r);
++         return;
++      }
++      mapped = true;
++   }
++
++   for (uint64_t i = 0; i < n; i++) {
++      fprintf(stderr, "%02x", ((const uint8_t *)bo->bo->map)[i]);
++      if ((i + 1) % line_bytes == 0)
++         fprintf(stderr, "\n");
++   }
++   fprintf(stderr, "\nDUMP end\n");
++
++   if (mapped)
++      pvr_bo_cpu_unmap(device, bo);
++}
++
+ static void pvr_rt_rgn_headers_data_fini(struct pvr_rt_dataset *rt_dataset)
+ {
++   pvr_debug_dump_bo(rt_dataset->device, rt_dataset->rgn_headers_bo, "rgn", 80);
++   pvr_debug_dump_bo(rt_dataset->device, rt_dataset->tpc_bo, "tpc", 128);
++
+    for (uint32_t i = 0; i < ARRAY_SIZE(rt_dataset->rt_datas); i++)
+       rt_dataset->rt_datas[i].rgn_headers_dev_addr = PVR_DEV_ADDR_INVALID;
+ 
+--- a/src/imagination/vulkan/pvr_arch_job_render.c
++++ b/src/imagination/vulkan/pvr_arch_job_render.c
+@@ -24,6 +24,7 @@
+ #include <assert.h>
+ #include <stdbool.h>
+ #include <stdint.h>
++#include <stdlib.h>
+ #include <vulkan/vulkan.h>
+ 
+ #include "hwdef/rogue_hw_defs.h"
+@@ -329,7 +330,8 @@
+                        device->heaps.general_heap,
+                        tpc_size,
+                        ROGUE_CR_TE_TPC_ADDR_BASE_ALIGNMENT,
+-                       PVR_BO_ALLOC_FLAG_GPU_UNCACHED,
++                       PVR_BO_ALLOC_FLAG_GPU_UNCACHED |
++                          (getenv("PVR_DUMP_RGN") ? PVR_BO_ALLOC_FLAG_CPU_ACCESS : 0),
+                        &rt_dataset->tpc_bo);
+ }
+ 
+@@ -516,7 +518,9 @@
+                          device->heaps.rgn_hdr_heap,
+                          rgn_headers_size * num_rt_datas,
+                          ROGUE_CR_TE_PSGREGION_ADDR_BASE_ALIGNMENT,
+-                         PVR_BO_ALLOC_FLAG_GPU_UNCACHED,
++                         PVR_BO_ALLOC_FLAG_GPU_UNCACHED |
++                            (getenv("PVR_DUMP_RGN") ? PVR_BO_ALLOC_FLAG_CPU_ACCESS
++                                                    : 0),
+                          &rt_dataset->rgn_headers_bo);
+    if (result != VK_SUCCESS)
+       return result;
