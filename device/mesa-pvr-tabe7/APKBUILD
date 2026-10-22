@@ -7,7 +7,7 @@
 # run in a cross build.
 pkgname=mesa-pvr-tabe7
 pkgver=26.2.5
-pkgrel=11
+pkgrel=13
 pkgdesc="Mesa PowerVR Vulkan driver with GE8300 (SIPF v1) patches"
 url="https://www.mesa3d.org"
 arch="aarch64"
@@ -45,6 +45,7 @@ source="https://mesa.freedesktop.org/archive/mesa-$pkgver.tar.xz
 	0005-pvr-debug-pbe-clip-scale.patch
 	0006-pvr-debug-region-clip-scale.patch
 	0007-pvr-debug-dump-region-headers.patch
+	0008-pvr-v1-terminate-clip-16px-blocks.patch
 	"
 builddir="$srcdir/mesa-$pkgver"
 
@@ -92,4 +93,5 @@ e0a3f7762d896dec07f2aeb5a5bb94fdd4daa80383cf54f5d99ce68d60825c4235324aec30275721
 eccceebae43b94122dec133b0726449e3c027c25a87dbe42d2a04d060b8c29d426066ad68e000982b30b6465f501a052abd7594cce61652988f9167ee7119f48  0005-pvr-debug-pbe-clip-scale.patch
 6692654b8e8a8bdef7f6a9b4d3ff50cf4d06dea6c57f09e6b38d0549a41d12015ad4b94231ec3160039b4814ee1acddf1d531a07dd2b699e6a4a841b111b8362  0006-pvr-debug-region-clip-scale.patch
 8a95f0ac6d56445f36f98e2c72215fc1ac46f72bb07d6cd07f9508356d96ebff9b04da9d65d9528aeeed0fe9939cd9e1f2a45fc33a6cc72c0334f3b2de2571b3  0007-pvr-debug-dump-region-headers.patch
+07f3d5de8bd09362540fb04139aab4ca0cddb4b2080701603e7635db2657087707720eeb6d61e06ba8d17949e9278787fb72e123f6c94f418b507777393c816c  0008-pvr-v1-terminate-clip-16px-blocks.patch
 "

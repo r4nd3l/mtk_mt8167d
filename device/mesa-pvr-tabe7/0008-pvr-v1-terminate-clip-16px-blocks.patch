@@ -1,0 +1,42 @@
+From: Mate Molnar <matemolnar88@gmail.com>
+Date: Thu, 22 Oct 2026 23:55:00 +0200
+Subject: [PATCH] pvr: TA terminate clip in 16 px blocks on simple parameter format v1
+
+GE8300 (BVNC 22.40.54.30, SIPF v1) reads TA_STATE_TERMINATE0/1 clip_* in
+16 pixel blocks, not 32. With 32 px units the TE marked every tile past
+half the framebuffer (per axis) as clipped (region header bit 1) and the
+ISP rendered only the top-left quarter of every render.
+---
+--- a/src/imagination/vulkan/pvr_arch_framebuffer.c
++++ b/src/imagination/vulkan/pvr_arch_framebuffer.c
+@@ -33,6 +33,11 @@
+ {
+    const uint32_t cache_line_size =
+       pvr_get_slc_cache_line_size(&device->pdevice->dev_info);
++   const uint32_t clip_block =
++      PVR_GET_FEATURE_VALUE(&device->pdevice->dev_info,
++                            simple_parameter_format_version,
++                            0) == 1 ? 16U
++                                    : ROGUE_TA_STATE_TERMINATE0_CLIP_RIGHT_BLOCK_SIZE_IN_PIXELS;
+    uint32_t ppp_state[3];
+    VkResult result;
+ 
+@@ -41,16 +46,8 @@
+    }
+ 
+    pvr_csb_pack (&ppp_state[1], TA_STATE_TERMINATE0, term0) {
+-      term0.clip_right =
+-         DIV_ROUND_UP(
+-            rstate->width,
+-            ROGUE_TA_STATE_TERMINATE0_CLIP_RIGHT_BLOCK_SIZE_IN_PIXELS) -
+-         1;
+-      term0.clip_bottom =
+-         DIV_ROUND_UP(
+-            rstate->height,
+-            ROGUE_TA_STATE_TERMINATE0_CLIP_BOTTOM_BLOCK_SIZE_IN_PIXELS) -
+-         1;
++      term0.clip_right = DIV_ROUND_UP(rstate->width, clip_block) - 1;
++      term0.clip_bottom = DIV_ROUND_UP(rstate->height, clip_block) - 1;
+    }
+ 
+    pvr_csb_pack (&ppp_state[2], TA_STATE_TERMINATE1, term1) {
