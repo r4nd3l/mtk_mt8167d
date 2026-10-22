@@ -1,0 +1,35 @@
+From: Mate Molnar <matemolnar88@gmail.com>
+Date: Fri, 23 Oct 2026 02:20:00 +0200
+Subject: [PATCH] pco: lower alpha-to-coverage only when the pipeline can use it
+
+The pass checks a runtime fs_meta bit, so it was run for every fragment
+shader. The resulting demote makes every FS discard-capable: an alphaf
+ISP feedback and punch-through behaviour even for a plain colour write.
+Run it only when alphaToCoverage is enabled statically or dynamic.
+---
+--- a/src/imagination/pco/pco_nir.c
++++ b/src/imagination/pco/pco_nir.c
+@@ -991,7 +991,10 @@
+ 
+    if (nir->info.stage == MESA_SHADER_FRAGMENT) {
+ 
+-      if (!internal)
++      /* Only when the pipeline can enable it: the runtime-checked lowering
++       * adds a demote to every FS, which forces alphaf / punch-through.
++       */
++      if (!internal && data->fs.uses.alpha_to_coverage)
+          NIR_PASS(_, nir, pco_nir_lower_alpha_to_coverage);
+ 
+       NIR_PASS(_, nir, nir_lower_blend, &data->fs.blend_opts);
+--- a/src/imagination/vulkan/pvr_arch_pipeline.c
++++ b/src/imagination/vulkan/pvr_arch_pipeline.c
+@@ -2701,6 +2701,9 @@
+       data->fs.uses.alpha_to_coverage = false;
+       if (state->ms)
+          data->fs.uses.alpha_to_coverage = state->ms->alpha_to_coverage_enable;
++      if (BITSET_TEST(state->dynamic,
++                      MESA_VK_DYNAMIC_MS_ALPHA_TO_COVERAGE_ENABLE))
++         data->fs.uses.alpha_to_coverage = true;
+ 
+       if (BITSET_TEST(state->dynamic, MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES) ||
+           (state->cb && state->cb->color_write_enables !=

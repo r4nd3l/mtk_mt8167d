@@ -1,0 +1,75 @@
+From: Mate Molnar <matemolnar88@gmail.com>
+Date: Fri, 23 Oct 2026 02:40:00 +0200
+Subject: [PATCH] pco: no sample-mask discard / ISP feedback for plain shaders
+
+lower_isp_fb() added a sample-mask test (and so a discard, alphaf and
+punch-through) to every fragment shader. Only do it with MSAA, a dynamic
+sample mask / sample count or a partial static mask, and emit no ISP
+feedback at all when the shader has neither discards nor depth feedback
+(the pipeline is then OPAQUE/TRANSLUCENT; an alphaf there locks up the
+GE8300 ISP). Opaque overdraw on the GE8300 drops from 14 to 1 ms/layer
+because HSR works again.
+---
+--- a/src/imagination/pco/pco_data.h
++++ b/src/imagination/pco/pco_data.h
+@@ -120,6 +120,7 @@
+       bool sample_shading;
+       bool sample_locations;
+       bool alpha_to_coverage;
++      bool sample_mask; /** Sample mask may be partial (dynamic or static). */
+       bool olchk_skip;
+    } uses;
+ 
+--- a/src/imagination/pco/pco_nir_pvfio.c
++++ b/src/imagination/pco/pco_nir_pvfio.c
+@@ -544,7 +544,10 @@
+       has_depth_feedback = true;
+    }
+ 
+-   if (!state->has_sample_check) {
++   /* Only needed with MSAA or a possibly partial sample mask; otherwise it
++    * just forces discard/punch-through.
++    */
++   if (!state->has_sample_check && state->fs->uses.sample_mask) {
+       b->cursor = nir_after_instr(&state->last_discard_store->instr);
+ 
+       nir_def *smp_msk = nir_ishl(b, nir_imm_int(b, 1), nir_load_sample_id(b));
+@@ -560,6 +563,15 @@
+       state->has_discards = true;
+    }
+ 
++   /* Nothing to feed back: the pipeline is then OPAQUE/TRANSLUCENT and an
++    * alphaf here would hang the ISP (guilty lockup on GE8300).
++    */
++   if (!state->has_discards && !has_depth_feedback) {
++      state->fs->uses.discard = false;
++      state->fs->uses.depth_feedback = false;
++      return false;
++   }
++
+    /* Insert isp feedback instruction before the first store,
+     * or if there are no stores, at the end.
+     */
+--- a/src/imagination/vulkan/pvr_arch_pipeline.c
++++ b/src/imagination/vulkan/pvr_arch_pipeline.c
+@@ -2705,6 +2705,20 @@
+                       MESA_VK_DYNAMIC_MS_ALPHA_TO_COVERAGE_ENABLE))
+          data->fs.uses.alpha_to_coverage = true;
+ 
++      /* The per-sample mask check in the FS is only needed with MSAA or when
++       * the sample mask can be partial.
++       */
++      data->fs.uses.sample_mask =
++         BITSET_TEST(state->dynamic, MESA_VK_DYNAMIC_MS_SAMPLE_MASK) ||
++         BITSET_TEST(state->dynamic, MESA_VK_DYNAMIC_MS_RASTERIZATION_SAMPLES);
++      if (state->ms) {
++         const uint16_t full = BITFIELD_MASK(state->ms->rasterization_samples);
++
++         if (state->ms->rasterization_samples > 1 ||
++             (state->ms->sample_mask & full) != full)
++            data->fs.uses.sample_mask = true;
++      }
++
+       if (BITSET_TEST(state->dynamic, MESA_VK_DYNAMIC_CB_COLOR_WRITE_ENABLES) ||
+           (state->cb && state->cb->color_write_enables !=
+                            BITFIELD_MASK(MESA_VK_MAX_COLOR_ATTACHMENTS))) {
