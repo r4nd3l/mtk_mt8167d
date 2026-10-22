@@ -20,11 +20,14 @@ render were ever written.
  #include <linux/slab.h>
  #include <linux/xarray.h>
  #include <uapi/drm/pvr_drm.h>
-@@ -225,6 +226,13 @@
+@@ -225,6 +226,16 @@
  	memcpy(cpu_ptr, &hwrt->common, sizeof(hwrt->common));
  }
  
 +static uint pvr_v1_tile_scale = 1;
++static bool pvr_v1_classic_mtiles;
++module_param_named(v1_classic_mtiles, pvr_v1_classic_mtiles, bool, 0644);
++MODULE_PARM_DESC(v1_classic_mtiles, "Debug: use the classic 4x4 macrotile split for simple parameter format v1 render targets.");
 +static uint pvr_v1_screen_scale = 1;
 +module_param_named(v1_screen_scale, pvr_v1_screen_scale, uint, 0644);
 +MODULE_PARM_DESC(v1_screen_scale, "Debug: scale PPP_SCREEN of render targets.");
@@ -34,7 +37,17 @@ render were ever written.
  static int
  hwrt_init_common_fw_structure(struct pvr_file *pvr_file,
  			      struct drm_pvr_ioctl_create_hwrt_dataset_args *args,
-@@ -254,20 +262,41 @@
+@@ -246,7 +257,8 @@
+ 	info.num_tiles_x = DIV_ROUND_UP(args->width, info.tile_size_x);
+ 	info.num_tiles_y = DIV_ROUND_UP(args->height, info.tile_size_y);
+ 
+-	if (PVR_HAS_FEATURE(pvr_dev, simple_parameter_format_version)) {
++	if (PVR_HAS_FEATURE(pvr_dev, simple_parameter_format_version) &&
++	    !pvr_v1_classic_mtiles) {
+ 		u32 parameter_format;
+ 
+ 		err = PVR_FEATURE_VALUE(pvr_dev, simple_parameter_format_version,
+@@ -254,20 +266,41 @@
  		if (WARN_ON(err))
  			return err;
  
@@ -53,7 +66,7 @@ render were ever written.
 -		info.mtile_y[2] = 0;
 -		info.tile_max_x = round_up(info.num_tiles_x, 2) - 1;
 -		info.tile_max_y = round_up(info.num_tiles_y, 2) - 1;
-+		if (parameter_format == 1) {
++		if (parameter_format == 1 && !pvr_v1_classic_mtiles) {
 +			/*
 +			 * Version 1 (Series8XE, e.g. GE8300): a single macrotile that
 +			 * covers the whole render target, no tile grouping. Taken from
@@ -89,7 +102,7 @@ render were ever written.
  	} else {
  		/* Set up 16 macrotiles with a multiple of 4x4 tiles per macrotile. */
  		info.mtile_x[0] = round_up(DIV_ROUND_UP(info.num_tiles_x, 4), 4);
-@@ -306,9 +335,9 @@
+@@ -306,9 +339,9 @@
  		return err;
  
  	hwrt->common.screen_pixel_max =
@@ -101,7 +114,7 @@ render were ever written.
  		 ~ROGUE_CR_PPP_SCREEN_PIXYMAX_CLRMSK);
  
  	hwrt->common.te_screen =
-@@ -334,6 +363,8 @@
+@@ -334,6 +367,8 @@
  	hwrt->common.tpc_size = geom_data_args->tpc_size;
  
  	hwrt->common.rgn_header_size = args->region_header_size;
