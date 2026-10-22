@@ -1,0 +1,52 @@
+container {
+  color { bounds: 0 0 1024 616; color: #fafafa; }
+  linear-gradient { bounds: 0 0 1024 46; start: 0 0; end: 0 46; stops: 0 #ffffff, 1 #e8e8e8; }
+  border { outline: 16 60 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 142 60 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 268 60 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 394 60 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 520 60 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 646 60 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 772 60 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 898 60 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 16 130 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 142 130 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 268 130 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 394 130 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 520 130 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 646 130 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 772 130 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 898 130 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 16 200 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 142 200 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 268 200 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 394 200 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 520 200 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 646 200 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 772 200 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 898 200 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 16 270 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 142 270 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 268 270 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 394 270 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 520 270 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 646 270 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 772 270 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 898 270 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 16 340 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 142 340 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 268 340 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 394 340 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 520 340 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 646 340 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 772 340 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 898 340 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 16 410 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 142 410 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 268 410 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 394 410 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 520 410 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 646 410 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 772 410 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+  border { outline: 898 410 116 58 / 8; widths: 1; colors: rgba(0,0,0,0.2); }
+}

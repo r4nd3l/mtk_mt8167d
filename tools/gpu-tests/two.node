@@ -1,0 +1,4 @@
+container {
+  color { bounds: 0 0 1024 616; color: #fafafa; }
+  color { bounds: 0 0 1024 616; color: rgba(255,0,0,0.5); }
+}

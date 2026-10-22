@@ -1,0 +1,12 @@
+container {
+  linear-gradient { bounds: 0 0 1024 616; start: 0 0; end: 0 616; stops: 0 #ffffff, 1 #e8e8e8; }
+  linear-gradient { bounds: 0 0 1024 616; start: 0 0; end: 0 616; stops: 0 #ffffff, 1 #e8e8e8; }
+  linear-gradient { bounds: 0 0 1024 616; start: 0 0; end: 0 616; stops: 0 #ffffff, 1 #e8e8e8; }
+  linear-gradient { bounds: 0 0 1024 616; start: 0 0; end: 0 616; stops: 0 #ffffff, 1 #e8e8e8; }
+  linear-gradient { bounds: 0 0 1024 616; start: 0 0; end: 0 616; stops: 0 #ffffff, 1 #e8e8e8; }
+  linear-gradient { bounds: 0 0 1024 616; start: 0 0; end: 0 616; stops: 0 #ffffff, 1 #e8e8e8; }
+  linear-gradient { bounds: 0 0 1024 616; start: 0 0; end: 0 616; stops: 0 #ffffff, 1 #e8e8e8; }
+  linear-gradient { bounds: 0 0 1024 616; start: 0 0; end: 0 616; stops: 0 #ffffff, 1 #e8e8e8; }
+  linear-gradient { bounds: 0 0 1024 616; start: 0 0; end: 0 616; stops: 0 #ffffff, 1 #e8e8e8; }
+  linear-gradient { bounds: 0 0 1024 616; start: 0 0; end: 0 616; stops: 0 #ffffff, 1 #e8e8e8; }
+}

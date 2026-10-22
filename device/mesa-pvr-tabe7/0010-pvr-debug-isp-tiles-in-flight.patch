@@ -1,0 +1,27 @@
+From: Mate Molnar <matemolnar88@gmail.com>
+Date: Fri, 23 Oct 2026 01:20:00 +0200
+Subject: [PATCH] pvr: debug knob PVR_ISP_TIF for ISP tiles in flight (experiment)
+
+---
+--- a/src/imagination/vulkan/pvr_arch_job_common.c
++++ b/src/imagination/vulkan/pvr_arch_job_common.c
+@@ -23,6 +23,7 @@
+ 
+ #include <stdbool.h>
+ #include <stdint.h>
++#include <stdlib.h>
+ 
+ #include "hwdef/rogue_hw_defs.h"
+ #include "hwdef/rogue_hw_utils.h"
+@@ -409,6 +410,11 @@
+ 
+       isp_tiles_in_flight =
+          PVR_GET_FEATURE_VALUE(dev_info, isp_max_tiles_in_flight, 0);
++      /* ponytail: experiment knob, the GE8300 vendor DDK runs 10 tiles in
++       * flight where the 22.68 device info says 4.
++       */
++      if (getenv("PVR_ISP_TIF"))
++         isp_tiles_in_flight = atoi(getenv("PVR_ISP_TIF"));
+       /* Ensure that maximum number of ISP tiles in flight is not greater
+        * than the maximum number of USC tiles in flight.
+        */

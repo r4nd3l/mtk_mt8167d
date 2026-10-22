@@ -1,0 +1,12 @@
+container {
+  color { bounds: 0 0 1024 616; color: rgba(0,0,0,0.5); }
+  color { bounds: 0 0 1024 616; color: rgba(20,0,0,0.5); }
+  color { bounds: 0 0 1024 616; color: rgba(40,0,0,0.5); }
+  color { bounds: 0 0 1024 616; color: rgba(60,0,0,0.5); }
+  color { bounds: 0 0 1024 616; color: rgba(80,0,0,0.5); }
+  color { bounds: 0 0 1024 616; color: rgba(100,0,0,0.5); }
+  color { bounds: 0 0 1024 616; color: rgba(120,0,0,0.5); }
+  color { bounds: 0 0 1024 616; color: rgba(140,0,0,0.5); }
+  color { bounds: 0 0 1024 616; color: rgba(160,0,0,0.5); }
+  color { bounds: 0 0 1024 616; color: rgba(180,0,0,0.5); }
+}
