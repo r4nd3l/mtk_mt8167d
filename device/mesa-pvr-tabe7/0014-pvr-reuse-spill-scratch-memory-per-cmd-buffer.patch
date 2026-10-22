@@ -1,0 +1,87 @@
+From: Mate Molnar <matemolnar88@gmail.com>
+Date: Fri, 23 Oct 2026 04:40:00 +0200
+Subject: [PATCH] pvr: reuse spill/scratch memory across draws of a command buffer
+
+pvr_setup_descriptor_mappings() allocated a fresh spill buffer (8 KiB per
+stage even with no spills) and scratch buffer (96 KiB for GSK's fragment
+shaders on the GE8300) for every draw. Each one overflowed the 128 KiB
+suballocator, so every draw created, mapped and later destroyed a GEM
+object (~5 ioctls + mmap/munmap per draw, ~140 ms of CPU per GSK frame).
+The memory is indexed by HW instance, so one buffer sized for the largest
+request is safe to share by all draws of the command buffer.
+---
+--- a/src/imagination/vulkan/pvr_cmd_buffer.h
++++ b/src/imagination/vulkan/pvr_cmd_buffer.h
+@@ -424,6 +424,12 @@
+ };
+ 
+ struct pvr_cmd_buffer_state {
++   /* Spill and scratch memory, sized for every USC instance and shared by all
++    * draws/dispatches of the command buffer (indexed by HW instance).
++    */
++   struct pvr_suballoc_bo *spill_bo;
++   struct pvr_suballoc_bo *scratch_bo;
++
+    /* Pipeline binding. */
+    const struct pvr_graphics_pipeline *gfx_pipeline;
+ 
+--- a/src/imagination/vulkan/pvr_arch_cmd_buffer.c
++++ b/src/imagination/vulkan/pvr_arch_cmd_buffer.c
+@@ -5508,6 +5508,27 @@
+ static VkResult pvr_cmd_upload_push_consts(struct pvr_cmd_buffer *cmd_buffer,
+                                            enum pvr_stage_allocation stage);
+ 
++/* Spill/scratch memory is indexed by HW instance, so one buffer big enough
++ * for the largest request can serve every draw of the command buffer instead
++ * of a fresh (often >64 KiB) allocation per draw.
++ */
++static VkResult
++pvr_cmd_buffer_get_shared_mem(struct pvr_cmd_buffer *const cmd_buffer,
++                              struct pvr_suballoc_bo **const cache,
++                              size_t size,
++                              struct pvr_suballoc_bo **const bo_out)
++{
++   if (!*cache || (*cache)->size < size) {
++      VkResult result =
++         pvr_arch_cmd_buffer_upload_general(cmd_buffer, NULL, size, cache);
++      if (result != VK_SUCCESS)
++         return result;
++   }
++
++   *bo_out = *cache;
++   return VK_SUCCESS;
++}
++
+ static VkResult pvr_setup_descriptor_mappings(
+    struct pvr_cmd_buffer *const cmd_buffer,
+    enum pvr_stage_allocation stage,
+@@ -5870,10 +5891,10 @@
+             size_t total_spill_mem_size =
+                spill_block_size * rogue_get_total_instance_count(dev_info);
+             struct pvr_suballoc_bo *spill_buffer_bo;
+-            result = pvr_arch_cmd_buffer_upload_general(cmd_buffer,
+-                                                        NULL,
+-                                                        total_spill_mem_size,
+-                                                        &spill_buffer_bo);
++            result = pvr_cmd_buffer_get_shared_mem(cmd_buffer,
++                                                   &cmd_buffer->state.spill_bo,
++                                                   total_spill_mem_size,
++                                                   &spill_buffer_bo);
+ 
+             if (result != VK_SUCCESS)
+                return result;
+@@ -5907,10 +5928,10 @@
+             size_t total_scratch_mem_size =
+                scratch_block_size * rogue_get_total_instance_count(dev_info);
+             struct pvr_suballoc_bo *scratch_buffer_bo;
+-            result = pvr_arch_cmd_buffer_upload_general(cmd_buffer,
+-                                                        NULL,
+-                                                        total_scratch_mem_size,
+-                                                        &scratch_buffer_bo);
++            result = pvr_cmd_buffer_get_shared_mem(cmd_buffer,
++                                                   &cmd_buffer->state.scratch_bo,
++                                                   total_scratch_mem_size,
++                                                   &scratch_buffer_bo);
+ 
+             if (result != VK_SUCCESS)
+                return result;

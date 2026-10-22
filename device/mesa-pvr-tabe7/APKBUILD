@@ -7,12 +7,13 @@
 # run in a cross build.
 pkgname=mesa-pvr-tabe7
 pkgver=26.2.5
-pkgrel=22
+pkgrel=25
 pkgdesc="Mesa PowerVR Vulkan driver with GE8300 (SIPF v1) patches"
 url="https://www.mesa3d.org"
 arch="aarch64"
 license="MIT SGI-B-2.0 BSL-1.0"
-options="!check pmb:cross-native2"
+# !strip: keep the symbol table for gdb/perf on the device (~6 % bigger apk)
+options="!check !strip pmb:cross-native2"
 replaces="mesa-vulkan-imagination"
 makedepends_build="
 	bison
@@ -51,6 +52,7 @@ source="https://mesa.freedesktop.org/archive/mesa-$pkgver.tar.xz
 	0011-pco-lower-alpha-to-coverage-only-when-used.patch
 	0012-pco-sample-mask-check-only-when-partial.patch
 	0013-pco-predicate-only-small-if-bodies.patch
+	0014-pvr-reuse-spill-scratch-memory-per-cmd-buffer.patch
 	"
 builddir="$srcdir/mesa-$pkgver"
 
@@ -106,4 +108,5 @@ a6be3ad6991ee5c1c209ffc9b54771351621670a25309a827df0580884d9533e4e91f096963ea471
 1abbc4c99939aab0e2930e7fd0ed5569de9c13d844d39504a980f786b02f120012e0715c8459e70be8a54b8c5da2a581ab57769298e272bc4301ad519b0f009c  0011-pco-lower-alpha-to-coverage-only-when-used.patch
 9165f2f3f7b4470d21f39ac20b9ad85ccf8c19a23fd7bf454ddee762ceb3efa73d43c0d9bbb2aff6d2a2f7118f982d3a504ad89b66222a88ec9bbb69200e564a  0012-pco-sample-mask-check-only-when-partial.patch
 f355943ed7b2b7816c4ca49344a27a0e07338df5e0e757c53c5e74f364c362bf8ed015ad032e700158082009f931e72949c679121390f9852687376b2a1ce369  0013-pco-predicate-only-small-if-bodies.patch
+3181fc2aceb248b815b913a97a1a4bc685247d38a2cd975c1a9c2d029cc257d0fad75285b4ddd36758da405b01c00b61aa4b4aaf436776f5b1a57200af7f5e74  0014-pvr-reuse-spill-scratch-memory-per-cmd-buffer.patch
 "
