@@ -1,0 +1,48 @@
+From: Mate Molnar <matemolnar88@gmail.com>
+Date: Fri, 23 Oct 2026 03:30:00 +0200
+Subject: [PATCH] pco: predicate only small if bodies
+
+can_pred_exec() turned every non-nested if into predicated code, so large
+bodies (GSK's per-corner rounded-rect coverage: pow/log/exp per corner)
+ran for every pixel. Keep predication for bodies of up to 8 instructions
+and use real branches beyond that. GE8300: GSK UI frame 0.35 -> ~0.25 s,
+vkmark desktop 100 -> 140 FPS, output unchanged.
+---
+--- a/src/imagination/pco/pco_cf.c
++++ b/src/imagination/pco/pco_cf.c
+@@ -93,11 +93,35 @@
+    return last_instr->op == PCO_OP_BR;
+ }
+ 
++/* ponytail: fixed threshold, measured on GE8300 (GSK rounded-corner math).
++ * Predicated bodies run for every lane; past a handful of instructions a
++ * real branch that the whole group can skip is cheaper.
++ */
++#define PCO_PRED_CF_MAX_INSTRS 8U
++
++static inline unsigned body_num_instrs(struct list_head *body)
++{
++   unsigned n = 0;
++
++   if (list_is_empty(body))
++      return 0;
++
++   pco_block *block = pco_cf_node_as_block(pco_cf_node_head(body));
++   pco_foreach_instr_in_block (instr, block)
++      n++;
++
++   return n;
++}
++
+ static inline bool can_pred_exec(pco_if *pif)
+ {
+    if (PCO_DEBUG(NO_PRED_CF))
+       return false;
+ 
++   if (body_num_instrs(&pif->then_body) + body_num_instrs(&pif->else_body) >
++       PCO_PRED_CF_MAX_INSTRS)
++      return false;
++
+    /* Skip if there is any nesting. */
+    if (list_length(&pif->then_body) > 1 || list_length(&pif->else_body) > 1)
+       return false;
