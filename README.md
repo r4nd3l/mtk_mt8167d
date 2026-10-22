@@ -82,9 +82,29 @@ Working:
   scanned every 7-8 s and this firmware drops the link on online scans
 - Phosh with a patched phrog greeter (first PIN attempt no longer fails)
 
+- GPU, first light: the PowerVR GE8300 (BVNC 22.40.54.30, MIPS firmware,
+  32-bit physical bus) runs Imagination's 22.68.54.30 firmware under mainline
+  `drm/imagination` and executes jobs from Mesa's open Vulkan driver. Three
+  pieces were missing, all reverse engineered from the vendor DDK 1.9 and its
+  firmware (`device/mesa-pvr-tabe7/NOTES-*.md`):
+  - kernel 0028: on a 32-bit bus the MIPS wrapper register bank address is
+    the physical GPU register base (mainline refused such cores outright)
+  - kernel 0029: BRN 65273, the firmware's TE region header initialiser
+    touches fixed addresses 0xF800000000 / 0xF900000000 after init, so every
+    VM context maps a page there (`brn65273` module parameter)
+  - Mesa (`device/mesa-pvr-tabe7`): the transfer queue's ISP control stream
+    and vertex format word for simple internal parameter format **v1**,
+    which upstream Mesa lacks (it only has classic and v2)
+  `scripts/vkclear.c` (clear an image on the GPU, read it back) passes.
+  Nothing is on screen yet: the compositor renders with pixman on simpledrm
+  and cannot import GPU buffers, so mediatek-drm (DSI) is the next step.
+  `device/mesa-clc` builds the native `mesa_clc`/`pco_clc` tools that a
+  cross build of the Imagination driver needs.
+
 Not yet:
 
-- GPU (PowerVR GE8300 needs 32-bit MIPS bus support in `drm/imagination`)
+- GPU on screen: needs the mediatek-drm DSI path (phoc runs pixman on
+  simpledrm), then zink for GL or a Vulkan-native UI
 - mediatek-drm instead of simpledrm (DSI comes up only about half the time
   on MT8167, per Luca)
 - Front camera (GC030A): the sensor streams but the receiver sees nothing,

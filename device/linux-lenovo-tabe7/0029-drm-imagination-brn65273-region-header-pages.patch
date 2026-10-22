@@ -1,0 +1,139 @@
+From: Mate Molnar <matemolnar88@gmail.com>
+Date: Wed, 21 Oct 2026 23:20:00 +0200
+Subject: [PATCH] drm/imagination: BRN 65273 workaround, map the fixed region header pages
+
+Series8XE cores with BRN 65273 (PowerVR GE8300, 22.40.54.30) have a
+firmware one-shot after init that drives the TE region header initialiser
+at the fixed device virtual addresses 0xF800000000 and 0xF900000000 under
+every BIF catalogue base. The vendor DDK reserves two "MMU INIA/INIB
+BRN65273" heaps there and userspace allocates one GPU-writable page in
+each; the firmware never sees the address. Without the pages the first job
+of every context faults at 0xF800000000 (fragment DM lockup).
+
+Map one uncached GPU-writable page at both addresses in every userspace VM
+context when the brn65273 module parameter is set. The quirk cannot be
+taken from the firmware image: its device info ABI has no bit for it.
+---
+--- a/drivers/gpu/drm/imagination/pvr_vm.c
++++ b/drivers/gpu/drm/imagination/pvr_vm.c
+@@ -21,6 +21,7 @@
+ #include <linux/errno.h>
+ #include <linux/gfp_types.h>
+ #include <linux/kref.h>
++#include <linux/moduleparam.h>
+ #include <linux/mutex.h>
+ #include <linux/stddef.h>
+ 
+@@ -64,6 +65,35 @@
+ 	 * should use the @dummy_gem.resv and not their own _resv field.
+ 	 */
+ 	struct drm_gem_object dummy_gem;
++
++	/**
++	 * @brn65273_obj: One GPU-writable page mapped at the two BRN 65273
++	 * region header addresses, or %NULL. See pvr_vm_brn65273_map().
++	 */
++	struct pvr_gem_object *brn65273_obj;
++};
++
++/*
++ * BRN 65273 (Series8XE cores such as 22.40.54.30): after init the firmware
++ * runs a one-shot that drives the TE region header initialiser at the fixed
++ * device addresses 0xF800000000 and 0xF900000000 for every BIF catalogue
++ * base, so each userspace VM context needs a GPU-writable page mapped there
++ * or the first job faults. The quirk is not expressed in the firmware's
++ * device info, so it is enabled with the brn65273 module parameter (set by
++ * the board's modprobe configuration).
++ */
++static bool pvr_brn65273;
++module_param_named(brn65273, pvr_brn65273, bool, 0444);
++MODULE_PARM_DESC(brn65273, "Apply the BRN 65273 workaround (map the two fixed region header pages in every VM context).");
++
++#define PVR_BRN65273_RGNHDR_A 0xF800000000ull
++#define PVR_BRN65273_RGNHDR_B 0xF900000000ull
++
++static const struct drm_pvr_heap pvr_brn65273_heaps[] = {
++	{ .base = PVR_BRN65273_RGNHDR_A, .size = SZ_1G, .flags = 0,
++	  .page_size_log2 = PVR_DEVICE_PAGE_SHIFT },
++	{ .base = PVR_BRN65273_RGNHDR_B, .size = SZ_1G, .flags = 0,
++	  .page_size_log2 = PVR_DEVICE_PAGE_SHIFT },
+ };
+ 
+ static inline
+@@ -527,6 +557,41 @@
+ }
+ 
+ /**
++ * pvr_vm_brn65273_map() - Map the BRN 65273 region header pages.
++ * @vm_ctx: Userspace VM context being created.
++ *
++ * Failure is reported but not fatal: without the pages the first job faults
++ * exactly as it would without this workaround.
++ */
++static void
++pvr_vm_brn65273_map(struct pvr_vm_context *vm_ctx)
++{
++	struct pvr_device *pvr_dev = vm_ctx->pvr_dev;
++	struct pvr_gem_object *obj;
++	int err;
++
++	obj = pvr_gem_object_create(pvr_dev, PVR_DEVICE_PAGE_SIZE,
++				    DRM_PVR_BO_BYPASS_DEVICE_CACHE);
++	if (IS_ERR(obj)) {
++		drm_warn(from_pvr_device(pvr_dev),
++			 "BRN65273: cannot allocate region header page (%ld)\n",
++			 PTR_ERR(obj));
++		return;
++	}
++
++	err = pvr_vm_map(vm_ctx, obj, 0, PVR_BRN65273_RGNHDR_A,
++			 PVR_DEVICE_PAGE_SIZE);
++	if (!err)
++		err = pvr_vm_map(vm_ctx, obj, 0, PVR_BRN65273_RGNHDR_B,
++				 PVR_DEVICE_PAGE_SIZE);
++	if (err)
++		drm_warn(from_pvr_device(pvr_dev),
++			 "BRN65273: cannot map region header pages (%d)\n", err);
++
++	vm_ctx->brn65273_obj = obj;
++}
++
++/**
+  * pvr_vm_create_context() - Create a new VM context.
+  * @pvr_dev: Target PowerVR device.
+  * @is_userspace_context: %true if this context is for userspace. This will
+@@ -594,6 +659,9 @@
+ 	mutex_init(&vm_ctx->lock);
+ 	kref_init(&vm_ctx->ref_count);
+ 
++	if (is_userspace_context && pvr_brn65273)
++		pvr_vm_brn65273_map(vm_ctx);
++
+ 	return vm_ctx;
+ 
+ err_page_table_destroy:
+@@ -623,6 +691,9 @@
+ 
+ 	pvr_vm_unmap_all(vm_ctx);
+ 
++	if (vm_ctx->brn65273_obj)
++		pvr_gem_object_put(vm_ctx->brn65273_obj);
++
+ 	pvr_mmu_context_destroy(vm_ctx->mmu_ctx);
+ 	drm_gem_private_object_fini(&vm_ctx->dummy_gem);
+ 	mutex_destroy(&vm_ctx->lock);
+@@ -1130,6 +1201,14 @@
+ 			return &pvr_heaps[heap_id];
+ 	}
+ 
++	/* BRN 65273 region header pages live outside the user-visible heaps. */
++	if (pvr_brn65273) {
++		for (u32 i = 0; i < ARRAY_SIZE(pvr_brn65273_heaps); i++) {
++			if (pvr_heap_contains_range(&pvr_brn65273_heaps[i], start, end))
++				return &pvr_brn65273_heaps[i];
++		}
++	}
++
+ 	return NULL;
+ }
+ 

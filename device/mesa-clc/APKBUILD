@@ -1,0 +1,82 @@
+# Maintainer: Mate Molnar <matemolnar88@gmail.com>
+# Native build-machine tools from Mesa (mesa_clc, vtn_bindgen2 and the drivers'
+# internal shader compilers) so Mesa Vulkan drivers that compile OpenCL C
+# kernels at build time (imagination, panfrost, asahi, nouveau) can be
+# cross-compiled with -Dmesa-clc=system. Build-time dependency only.
+pkgname=mesa-clc
+pkgver=26.2.5
+pkgrel=2
+pkgdesc="Mesa OpenCL C to SPIR-V compiler for cross builds (mesa_clc)"
+url="https://www.mesa3d.org"
+arch="all"
+license="MIT"
+options="!check pmb:cross-native2"
+depends="libclc-dev"
+makedepends="
+	bison
+	clang23-dev
+	clang23-static
+	expat-dev
+	libdrm-dev
+	flex
+	libclc-dev
+	llvm23-dev
+	llvm23-static
+	meson
+	py3-cparser
+	py3-mako
+	py3-packaging
+	py3-yaml
+	python3
+	spirv-llvm-translator-dev
+	spirv-tools-dev
+	zlib-dev
+	zstd-dev
+	"
+source="https://mesa.freedesktop.org/archive/mesa-$pkgver.tar.xz"
+builddir="$srcdir/mesa-$pkgver"
+
+build() {
+	# The tools only ever run on the build machine. For any other arch this
+	# is an empty package so pmbootstrap's resolver is satisfied without
+	# cross-building LLVM-linked tools (which fails anyway).
+	[ "$CARCH" = x86_64 ] || return 0
+	abuild-meson \
+		-Dplatforms= \
+		-Dgallium-drivers= \
+		-Dvulkan-drivers=imagination \
+		-Dvulkan-layers= \
+		-Dllvm=enabled \
+		-Dshared-llvm=enabled \
+		-Dmesa-clc=enabled \
+		-Dinstall-mesa-clc=true \
+		-Dmesa-clc-bundle-headers=enabled \
+		-Dprecomp-compiler=enabled \
+		-Dinstall-precomp-compiler=true \
+		-Dglx=disabled \
+		-Degl=disabled \
+		-Dgbm=disabled \
+		-Dgles1=disabled \
+		-Dgles2=disabled \
+		-Dopengl=false \
+		-Dtools= \
+		-Dbuild-tests=false \
+		output
+	meson compile -C output
+}
+
+package() {
+	if [ "$CARCH" != x86_64 ]; then
+		mkdir -p "$pkgdir"
+		return 0
+	fi
+	DESTDIR="$pkgdir" meson install --no-rebuild -C output
+	# keep the build-machine tools only
+	find "$pkgdir" -type f ! -path '*/usr/bin/*' -delete
+	find "$pkgdir" -type d -empty -delete
+	ls -la "$pkgdir"/usr/bin
+}
+
+sha512sums="
+08c7d7ea426ddfb0f7bc51b06e18c363a4d31cf1a8b203828bb455eda0189e41d2215eb9f627585ed11e0d0f231a6a8c9f0c7176238760cd76b62e20c35ccd6a  mesa-26.2.5.tar.xz
+"
