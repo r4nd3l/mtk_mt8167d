@@ -139,7 +139,7 @@ int main(int argc, char **argv)
 	CK(vkCreateFramebuffer(dev, &fbci, NULL, &fb));
 
 	/* pipeline */
-	VkShaderModule vs = load_spv(dev, "fill.vert.spv"), fs = load_spv(dev, "fill.frag.spv");
+	VkShaderModule vs = load_spv(dev, getenv("VS") ? getenv("VS") : "fill.vert.spv"), fs = load_spv(dev, "fill.frag.spv");
 	VkPipelineShaderStageCreateInfo stages[2] = {
 		{ .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .stage = VK_SHADER_STAGE_VERTEX_BIT, .module = vs, .pName = "main" },
 		{ .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, .stage = VK_SHADER_STAGE_FRAGMENT_BIT, .module = fs, .pName = "main" },
@@ -190,7 +190,7 @@ int main(int argc, char **argv)
 	vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipe);
 	const int ndraw = getenv("NDRAW") ? atoi(getenv("NDRAW")) : 10;
 	for (int d = 0; d < ndraw; d++)
-		vkCmdDraw(cmd, 3, 1, 0, 0);
+		vkCmdDraw(cmd, getenv("NV") ? atoi(getenv("NV")) : 3, 1, 0, 0);
 	vkCmdEndRenderPass(cmd);
 	/* order the readback after the fragment job (no external subpass dependency) */
 	VkMemoryBarrier mb = { .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER, .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT };
