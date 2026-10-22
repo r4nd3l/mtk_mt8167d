@@ -1,0 +1,35 @@
+From: Mate Molnar <matemolnar88@gmail.com>
+Date: Thu, 22 Oct 2026 17:00:00 +0200
+Subject: [PATCH] pvr: 4x region header and TPC headroom on simple parameter format v1 (experiment)
+
+region_header_size stays the plain tile count (the firmware copies it
+straight into ISP_RGN). The buffers get 4x headroom for the tile scale
+experiment that investigates the half-per-axis coverage on the GE8300.
+---
+--- a/src/imagination/vulkan/pvr_arch_job_render.c
++++ b/src/imagination/vulkan/pvr_arch_job_render.c
+@@ -294,6 +294,10 @@
+       size /= (2U * 2U);
+    }
+ 
++   /* Version 1: same 4x headroom as the region headers (see above). */
++   if (version == 1)
++      size *= 4U;
++
+    size *= ROGUE_TAIL_POINTER_SIZE;
+ 
+    if (layers > 1) {
+@@ -390,6 +394,13 @@
+    rgn_headers_size *= num_tiles_y / group_size;
+    rgn_headers_size *= single_rgn_header_size;
+ 
++   /* Version 1: headroom (4x) while the GE8300 tile coverage is being
++    * investigated; the kernel's brn tile_scale experiment needs it.
++    * ponytail: drop once the 1/2-per-axis coverage bug is understood.
++    */
++   if (version == 1)
++      rgn_headers_size *= 4U;
++
+    if (PVR_HAS_FEATURE(dev_info, simple_internal_parameter_format)) {
+       rgn_headers_size =
+          ALIGN_POT(rgn_headers_size, ROGUE_CR_TE_PSGREGION_ADDR_BASE_ALIGNMENT);

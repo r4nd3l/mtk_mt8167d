@@ -1,0 +1,112 @@
+From: Mate Molnar <matemolnar88@gmail.com>
+Date: Thu, 22 Oct 2026 13:30:00 +0200
+Subject: [PATCH] drm/imagination: HWRT macrotile geometry for simple parameter format v1
+
+hwrt_init_common_fw_structure() assumed simple_parameter_format_version 2
+(16 macrotiles of 2x2 tiles). Version 1 cores (Series8XE, GE8300) use a
+single macrotile covering the whole render target: TE_MTILE1/2 = number of
+tiles, TE_SCREEN = tiles - 1, mtile_stride = tiles_x * tiles_y, and
+ISP_MTILE_SIZE follows. Taken from the vendor DDK 1.9 RGXAddRenderTarget
+for 22.40.54.30. With the v2 geometry only the top-left 4x4 tiles of a
+render were ever written.
+---
+--- a/drivers/gpu/drm/imagination/pvr_hwrt.c
++++ b/drivers/gpu/drm/imagination/pvr_hwrt.c
+@@ -10,6 +10,7 @@
+ #include <drm/drm_gem.h>
+ #include <linux/bitops.h>
+ #include <linux/math.h>
++#include <linux/moduleparam.h>
+ #include <linux/slab.h>
+ #include <linux/xarray.h>
+ #include <uapi/drm/pvr_drm.h>
+@@ -225,6 +226,13 @@
+ 	memcpy(cpu_ptr, &hwrt->common, sizeof(hwrt->common));
+ }
+ 
++static uint pvr_v1_tile_scale = 1;
++static uint pvr_v1_screen_scale = 1;
++module_param_named(v1_screen_scale, pvr_v1_screen_scale, uint, 0644);
++MODULE_PARM_DESC(v1_screen_scale, "Debug: scale PPP_SCREEN of render targets.");
++module_param_named(v1_tile_scale, pvr_v1_tile_scale, uint, 0644);
++MODULE_PARM_DESC(v1_tile_scale, "Debug: scale the tile counts of simple parameter format v1 render targets.");
++
+ static int
+ hwrt_init_common_fw_structure(struct pvr_file *pvr_file,
+ 			      struct drm_pvr_ioctl_create_hwrt_dataset_args *args,
+@@ -254,20 +262,41 @@
+ 		if (WARN_ON(err))
+ 			return err;
+ 
+-		WARN_ON(parameter_format != 2);
++		WARN_ON(parameter_format != 1 && parameter_format != 2);
+ 
+-		/*
+-		 * Set up 16 macrotiles with a multiple of 2x2 tiles per macrotile, which is
+-		 * aligned to a tile group.
+-		 */
+-		info.mtile_x[0] = DIV_ROUND_UP(info.num_tiles_x, 8) * 2;
+-		info.mtile_y[0] = DIV_ROUND_UP(info.num_tiles_y, 8) * 2;
+-		info.mtile_x[1] = 0;
+-		info.mtile_y[1] = 0;
+-		info.mtile_x[2] = 0;
+-		info.mtile_y[2] = 0;
+-		info.tile_max_x = round_up(info.num_tiles_x, 2) - 1;
+-		info.tile_max_y = round_up(info.num_tiles_y, 2) - 1;
++		if (parameter_format == 1) {
++			/*
++			 * Version 1 (Series8XE, e.g. GE8300): a single macrotile that
++			 * covers the whole render target, no tile grouping. Taken from
++			 * the vendor DDK's RGXAddRenderTarget for 22.40.54.30.
++			 */
++			/* ponytail: v1_tile_scale is a debug knob for the
++			 * half-per-axis coverage seen on the GE8300; 1 = vendor values.
++			 */
++			info.num_tiles_x *= pvr_v1_tile_scale;
++			info.num_tiles_y *= pvr_v1_tile_scale;
++			info.mtile_x[0] = info.num_tiles_x;
++			info.mtile_y[0] = info.num_tiles_y;
++			info.mtile_x[1] = 0;
++			info.mtile_y[1] = 0;
++			info.mtile_x[2] = 0;
++			info.mtile_y[2] = 0;
++			info.tile_max_x = info.num_tiles_x - 1;
++			info.tile_max_y = info.num_tiles_y - 1;
++		} else {
++			/*
++			 * Set up 16 macrotiles with a multiple of 2x2 tiles per macrotile,
++			 * which is aligned to a tile group.
++			 */
++			info.mtile_x[0] = DIV_ROUND_UP(info.num_tiles_x, 8) * 2;
++			info.mtile_y[0] = DIV_ROUND_UP(info.num_tiles_y, 8) * 2;
++			info.mtile_x[1] = 0;
++			info.mtile_y[1] = 0;
++			info.mtile_x[2] = 0;
++			info.mtile_y[2] = 0;
++			info.tile_max_x = round_up(info.num_tiles_x, 2) - 1;
++			info.tile_max_y = round_up(info.num_tiles_y, 2) - 1;
++		}
+ 	} else {
+ 		/* Set up 16 macrotiles with a multiple of 4x4 tiles per macrotile. */
+ 		info.mtile_x[0] = round_up(DIV_ROUND_UP(info.num_tiles_x, 4), 4);
+@@ -306,9 +335,9 @@
+ 		return err;
+ 
+ 	hwrt->common.screen_pixel_max =
+-		(((args->width - 1) << ROGUE_CR_PPP_SCREEN_PIXXMAX_SHIFT) &
++		(((args->width * pvr_v1_screen_scale - 1) << ROGUE_CR_PPP_SCREEN_PIXXMAX_SHIFT) &
+ 		 ~ROGUE_CR_PPP_SCREEN_PIXXMAX_CLRMSK) |
+-		(((args->height - 1) << ROGUE_CR_PPP_SCREEN_PIXYMAX_SHIFT) &
++		(((args->height * pvr_v1_screen_scale - 1) << ROGUE_CR_PPP_SCREEN_PIXYMAX_SHIFT) &
+ 		 ~ROGUE_CR_PPP_SCREEN_PIXYMAX_CLRMSK);
+ 
+ 	hwrt->common.te_screen =
+@@ -334,6 +363,8 @@
+ 	hwrt->common.tpc_size = geom_data_args->tpc_size;
+ 
+ 	hwrt->common.rgn_header_size = args->region_header_size;
++	if (PVR_HAS_FEATURE(pvr_dev, simple_parameter_format_version))
++		hwrt->common.rgn_header_size *= pvr_v1_tile_scale * pvr_v1_tile_scale;
+ 
+ 	err = pvr_fw_object_create(pvr_dev, sizeof(struct rogue_fwif_hwrtdata_common),
+ 				   PVR_BO_FW_FLAGS_DEVICE_UNCACHED, hwrtdata_common_init, hwrt,

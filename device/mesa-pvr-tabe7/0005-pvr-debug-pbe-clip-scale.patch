@@ -1,0 +1,35 @@
+From: Mate Molnar <matemolnar88@gmail.com>
+Date: Thu, 22 Oct 2026 17:40:00 +0200
+Subject: [PATCH] pvr: debug knob PVR_V1_CLIP_SCALE for the PBE render clip (experiment)
+
+---
+--- a/src/imagination/vulkan/pvr_arch_cmd_buffer.c
++++ b/src/imagination/vulkan/pvr_arch_cmd_buffer.c
+@@ -28,6 +28,7 @@
+ #include <stdbool.h>
+ #include <stddef.h>
+ #include <stdint.h>
++#include <stdlib.h>
+ #include <string.h>
+ #include <vulkan/vulkan.h>
+ 
+@@ -1218,6 +1219,19 @@
+ 
+ #undef PVR_DEC_IF_NOT_ZERO
+ 
++   /* ponytail: debug knob for the GE8300 half-per-axis render coverage.
++    * PVR_V1_CLIP_SCALE=2 doubles the PBE max clip of render passes.
++    */
++   {
++      const char *e = getenv("PVR_V1_CLIP_SCALE");
++      const uint32_t scale = e ? (uint32_t)atoi(e) : 1U;
++
++      if (scale > 1U) {
++         render_params.max_x_clip = (render_params.max_x_clip + 1U) * scale - 1U;
++         render_params.max_y_clip = (render_params.max_y_clip + 1U) * scale - 1U;
++      }
++   }
++
+    render_params.slice = iview->vk.storage.z_slice_offset;
+ 
+    render_params.mrt_index = mrt_index;

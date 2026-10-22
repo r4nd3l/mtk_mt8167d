@@ -1,0 +1,37 @@
+From: Mate Molnar <matemolnar88@gmail.com>
+Date: Thu, 22 Oct 2026 13:30:00 +0200
+Subject: [PATCH] pvr: render target macrotile geometry for simple parameter format v1
+
+pvr_arch_rt_mtile_info_init() asserted simple_parameter_format_version 2
+and set up 16 macrotiles of 2x2 tiles. Version 1 cores (GE8300) use one
+macrotile covering the whole render target, so region header, tail pointer
+and macrotile stride sizes derive from the full tile count (vendor DDK 1.9
+RGXAddRenderTarget: TE_MTILE1 = tiles_x << 18, TE_SCREEN = tiles - 1,
+region headers 5 bytes per tile, TPC 8 * pow2(max tiles)^2).
+---
+--- a/src/imagination/vulkan/pvr_arch_job_render.c
++++ b/src/imagination/vulkan/pvr_arch_job_render.c
+@@ -127,7 +127,22 @@
+ 
+    rogue_get_num_macrotiles_xy(dev_info, &info->mtiles_x, &info->mtiles_y);
+ 
+-   if (PVR_HAS_FEATURE(dev_info, simple_internal_parameter_format)) {
++   if (PVR_HAS_FEATURE(dev_info, simple_internal_parameter_format) &&
++       PVR_GET_FEATURE_VALUE(dev_info, simple_parameter_format_version, 0) ==
++          1) {
++      /* Version 1 (Series8XE, e.g. GE8300): one macrotile covering the whole
++       * render target, no tile grouping (vendor DDK RGXAddRenderTarget for
++       * 22.40.54.30).
++       */
++      info->mtile_x1 = info->num_tiles_x;
++      info->mtile_y1 = info->num_tiles_y;
++      info->mtile_x2 = 0;
++      info->mtile_y2 = 0;
++      info->mtile_x3 = 0;
++      info->mtile_y3 = 0;
++      info->x_tile_max = info->num_tiles_x - 1;
++      info->y_tile_max = info->num_tiles_y - 1;
++   } else if (PVR_HAS_FEATURE(dev_info, simple_internal_parameter_format)) {
+       assert(PVR_GET_FEATURE_VALUE(dev_info,
+                                    simple_parameter_format_version,
+                                    0) == 2);

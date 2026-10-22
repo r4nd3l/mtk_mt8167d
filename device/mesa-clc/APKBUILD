@@ -62,7 +62,8 @@ build() {
 		-Dtools= \
 		-Dbuild-tests=false \
 		output
-	meson compile -C output
+	# respect pmbootstrap jobs: plain ninja runs nproc+2 jobs and ran the host out of memory
+	meson compile -C output -j "${JOBS:-4}"
 }
 
 package() {

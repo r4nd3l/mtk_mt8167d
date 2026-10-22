@@ -7,7 +7,7 @@
 # run in a cross build.
 pkgname=mesa-pvr-tabe7
 pkgver=26.2.5
-pkgrel=1
+pkgrel=7
 pkgdesc="Mesa PowerVR Vulkan driver with GE8300 (SIPF v1) patches"
 url="https://www.mesa3d.org"
 arch="aarch64"
@@ -39,6 +39,10 @@ makedepends_host="
 	"
 source="https://mesa.freedesktop.org/archive/mesa-$pkgver.tar.xz
 	0001-pvr-transfer-simple-internal-parameter-format-v1.patch
+	0002-pvr-render-target-macrotiles-for-simple-parameter-format-v1.patch
+	0003-pvr-valid-macrotile-array-address-for-simple-parameter-format-v1.patch
+	0004-pvr-v1-region-header-and-tpc-headroom.patch
+	0005-pvr-debug-pbe-clip-scale.patch
 	"
 builddir="$srcdir/mesa-$pkgver"
 
@@ -61,7 +65,13 @@ build() {
 		-Dbuild-tests=false \
 		-Dzstd=enabled \
 		output
-	meson compile -C output
+	# respect pmbootstrap jobs: plain ninja runs nproc+2 jobs and ran the host out of memory
+	# Several sources include generated headers (pco_usclib.h, git_sha1.h, ...)
+	# without a meson dependency; with few jobs the compiles can win the race.
+	# Generate every custom-command header first.
+	ninja -C output -j "${JOBS:-4}" $(ninja -C output -t targets all |
+		sed -n 's/^\([^:]*\.h\): CUSTOM_COMMAND.*/\1/p')
+	meson compile -C output -j "${JOBS:-4}"
 }
 
 package() {
@@ -74,4 +84,8 @@ package() {
 sha512sums="
 08c7d7ea426ddfb0f7bc51b06e18c363a4d31cf1a8b203828bb455eda0189e41d2215eb9f627585ed11e0d0f231a6a8c9f0c7176238760cd76b62e20c35ccd6a  mesa-26.2.5.tar.xz
 b36433a1031bbace6122ae8d6bda4e825f446138d49bc6d58465ab9457e21077ebebd3a96b7988c351184cdda8963d479cda9af422f4c86822454ff0d7b94bb7  0001-pvr-transfer-simple-internal-parameter-format-v1.patch
+d755bf7c73731bfd98ad7540cf57a7401652df4c2b228e397c96336c4327e3695e196c87c89a2485c08901cbfb15eac41c48594d92f084ffd915773b9f884d25  0002-pvr-render-target-macrotiles-for-simple-parameter-format-v1.patch
+e0a3f7762d896dec07f2aeb5a5bb94fdd4daa80383cf54f5d99ce68d60825c4235324aec302757216b92621044d6e32f0fe6c0bd36ed62e804ed6236992090a0  0003-pvr-valid-macrotile-array-address-for-simple-parameter-format-v1.patch
+9849bd2b50a4cc83fe4eb7482fda840e4b1eae4f2da891d6a7fab9403315ee82500da238dde00d9986dda5478c032ea05a56c8a4d3866f84adef09c708f10592  0004-pvr-v1-region-header-and-tpc-headroom.patch
+eccceebae43b94122dec133b0726449e3c027c25a87dbe42d2a04d060b8c29d426066ad68e000982b30b6465f501a052abd7594cce61652988f9167ee7119f48  0005-pvr-debug-pbe-clip-scale.patch
 "

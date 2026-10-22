@@ -1,0 +1,40 @@
+From: Mate Molnar <matemolnar88@gmail.com>
+Date: Thu, 22 Oct 2026 15:00:00 +0200
+Subject: [PATCH] pvr: pass a valid macrotile array address on simple parameter format v1
+
+The macrotile array size is 0 on these cores and Mesa then passes
+PVR_DEV_ADDR_INVALID for PM_MTILE_ARRAY / ISP_MTILE_BASE. The vendor DDK 1.9
+always programs a valid address (a 16-byte pad in front of its MList). Give
+the hardware a small valid buffer. (Scaling the region header count by 4
+instead was wrong: the TE overran the region header buffer and the
+geometry job faulted at the USC code heap base.)
+---
+--- a/src/imagination/vulkan/pvr_arch_job_render.c
++++ b/src/imagination/vulkan/pvr_arch_job_render.c
+@@ -414,7 +414,9 @@
+    VkResult result;
+ 
+    /* Valid case - see rogue_get_macrotile_array_size() */
+-   if (mta_size == 0) {
++   if (mta_size == 0 &&
++       PVR_GET_FEATURE_VALUE(dev_info, simple_parameter_format_version, 0) !=
++          1) {
+       rt_dataset->mta_bo = NULL;
+ 
+       for (uint32_t i = 0; i < num_rt_datas; i++)
+@@ -423,9 +425,14 @@
+       return VK_SUCCESS;
+    }
+ 
++   /* Simple parameter format v1 has no macrotile array either, but the vendor
++    * driver still programs a valid PM_MTILE_ARRAY / ISP_MTILE_BASE address (a
++    * 16-byte pad at the head of its MList allocation). Give the hardware a
++    * small valid buffer instead of PVR_DEV_ADDR_INVALID.
++    */
+    result = pvr_bo_alloc(device,
+                          device->heaps.general_heap,
+-                         mta_size * num_rt_datas,
++                         mta_size ? mta_size * num_rt_datas : 64U,
+                          ROGUE_CR_PM_MTILE_ARRAY_BASE_ADDR_ALIGNMENT,
+                          PVR_BO_ALLOC_FLAG_GPU_UNCACHED,
+                          &rt_dataset->mta_bo);

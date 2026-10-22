@@ -3,7 +3,7 @@
 
 pkgname=linux-lenovo-tabe7
 pkgver=7.3.0_rc5
-pkgrel=69
+pkgrel=72
 pkgdesc="Lenovo Tab E7 (TB-7104F) kernel fork"
 arch="aarch64"
 _carch="arm64"
@@ -55,6 +55,7 @@ source="
 	0027-dts-charging-led-trigger.patch
 	0028-drm-imagination-mips-fw-on-32-bit-phys-bus.patch
 	0029-drm-imagination-brn65273-region-header-pages.patch
+	0030-drm-imagination-hwrt-simple-parameter-format-v1.patch
 "
 builddir="$srcdir/linux-$_commit"
 
@@ -137,4 +138,5 @@ c62703c9a955e3f3296ade97f8f189d12a4b73e2a3fface4bc5db9cbd93829ec639d12466fa7c89d
 1595dbc495cdf8ed5df039bcf80ed4625c9d3a04f41958641346f5c9895177f9b42c153991ccf7498c8f4f2c74fcf02d823c704102d3d65a1d76b104f6dac827  0027-dts-charging-led-trigger.patch
 679b067c28be4e9b59e6b4b7c3c3940abb1e8db720525bf9d9eacc7ff8b2d1813a7bec7330ed1f99b63705f592109d0a79e6ebf7725e522157e8b483a72b3ffb  0028-drm-imagination-mips-fw-on-32-bit-phys-bus.patch
 bc0ff45b8fc455d9fb02698b7d9f7c3819e713197ca3c019df85ca2e5ad75f16ecceb04a00f455139e75e028992c36c597b41d681451f7411ecba23a92cdb8be  0029-drm-imagination-brn65273-region-header-pages.patch
+12881d5280af19021518a5ddc70aedcbfb86900828cb5249150314c20f4368c417c12c65ad533d7f26f9d847ec0b5115a3b55bbc61822bb65b91069504615462  0030-drm-imagination-hwrt-simple-parameter-format-v1.patch
 "
