@@ -1,0 +1,26 @@
+From: Mate Molnar <matemolnar88@gmail.com>
+Date: Fri, 23 Oct 2026 01:00:00 +0200
+Subject: [PATCH] pvr: ISP_BGOBJDEPTH is float32 on simple parameter format v1
+
+On the MT8167 GE8300 (22.40.54.30, SIPF v1) D16, X8_D24 and D24S8 render
+nothing while D32 and D32S8 are correct. The depth clear went to
+ISP_BGOBJDEPTH as a UNORM integer (1.0 -> 0xffff), which this core reads
+as an F32 (~9e-41), so every fragment failed VK_COMPARE_OP_LESS. Write the
+zload_format as F32Z for the clear value on v1.
+---
+--- a/src/imagination/vulkan/pvr_arch_job_render.c
++++ b/src/imagination/vulkan/pvr_arch_job_render.c
+@@ -1101,7 +1101,13 @@
+       /* This is valid even when we don't have a depth attachment because:
+        *  - zload_format is set to a sensible default above, and
+        *  - job->depth_clear_value is set to a sensible default in that case.
++       *
++       * SIPF v1 cores (GE8300 22.40) read it as F32 for every depth format.
+        */
++      if (PVR_GET_FEATURE_VALUE(dev_info, simple_parameter_format_version,
++                                0) == 1)
++         zload_format = ROGUE_CR_ZLS_FORMAT_TYPE_F32Z;
++
+       switch (zload_format) {
+       case ROGUE_CR_ZLS_FORMAT_TYPE_F32Z:
+       case ROGUE_CR_ZLS_FORMAT_TYPE_F64Z:
