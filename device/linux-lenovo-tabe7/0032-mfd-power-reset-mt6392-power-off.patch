@@ -1,0 +1,96 @@
+From: Mate Molnar <matemolnar88@gmail.com>
+Date: Fri, 23 Oct 2026 21:20:00 +0200
+Subject: [PATCH] mfd: mt6397: power controller cell for MT6392; power: reset:
+ mt6323-poweroff: MT6392 variant
+
+Without a power-off handler "poweroff" only halts the CPUs and the MT6392
+keeps every rail up: the screen goes dark, the battery keeps draining and
+the power key does nothing until the battery is reconnected. Add an
+"mt6392-pwrc" MFD cell on the RTC block and let mt6323-poweroff handle it,
+writing the RTC_BBPU value the vendor kernel uses for this PMIC
+(KEY | AUTO | PWREN, then the write trigger).
+---
+--- a/drivers/mfd/mt6397-core.c
++++ b/drivers/mfd/mt6397-core.c
+@@ -210,6 +210,11 @@
+ 		    "mediatek,mt6359-accdet"),
+ };
+ 
++/* The power controller lives in the RTC block (like MT6323_PWRC_BASE). */
++static const struct resource mt6392_pwrc_resources[] = {
++	DEFINE_RES_MEM(MT6392_RTC_BASE, MT6392_RTC_SIZE),
++};
++
+ static const struct mfd_cell mt6392_devs[] = {
+ 	MFD_CELL_OF("mt6392-keys", mt6392_keys_resources, NULL, 0, 0,
+ 		    "mediatek,mt6392-keys"),
+@@ -219,6 +224,7 @@
+ 	MFD_CELL_NAME("mt6392-charger"),
+ 	MFD_CELL_OF("mt6392-rtc", mt6392_rtc_resources, NULL, 0, 0,
+ 		    "mediatek,mt6392-rtc"),
++	MFD_CELL_RES("mt6392-pwrc", mt6392_pwrc_resources),
+ };
+ 
+ static const struct mfd_cell mt6397_devs[] = {
+--- a/drivers/power/reset/mt6323-poweroff.c
++++ b/drivers/power/reset/mt6323-poweroff.c
+@@ -16,10 +16,15 @@
+ #include <linux/mfd/mt6397/rtc.h>
+ #include <linux/reboot.h>
+ 
++/* MT6392: value written by the vendor (Lenovo TB-7104F) kernel at power off */
++#define RTC_BBPU_PWREN		BIT(0)
++#define RTC_BBPU_AUTO		BIT(3)
++
+ struct mt6323_pwrc {
+ 	struct device *dev;
+ 	struct regmap *regmap;
+ 	u32 base;
++	u32 bbpu;
+ };
+ 
+ static int mt6323_do_pwroff(struct sys_off_data *data)
+@@ -28,7 +33,7 @@
+ 	unsigned int val;
+ 	int ret;
+ 
+-	regmap_write(pwrc->regmap, pwrc->base + RTC_BBPU, RTC_BBPU_KEY);
++	regmap_write(pwrc->regmap, pwrc->base + RTC_BBPU, pwrc->bbpu);
+ 	regmap_write(pwrc->regmap, pwrc->base + RTC_WRTGR_MT6323, 1);
+ 
+ 	ret = regmap_read_poll_timeout(pwrc->regmap,
+@@ -50,6 +55,7 @@
+ static int mt6323_pwrc_probe(struct platform_device *pdev)
+ {
+ 	struct mt6397_chip *mt6397_chip = dev_get_drvdata(pdev->dev.parent);
++	const struct platform_device_id *id;
+ 	struct mt6323_pwrc *pwrc;
+ 	struct resource *res;
+ 	int ret;
+@@ -63,6 +69,9 @@
+ 		return -EINVAL;
+ 
+ 	pwrc->base = res->start;
++	/* NULL when matched through the DT (mt6323) */
++	id = platform_get_device_id(pdev);
++	pwrc->bbpu = RTC_BBPU_KEY | (id ? id->driver_data : 0);
+ 	pwrc->regmap = mt6397_chip->regmap;
+ 	pwrc->dev = &pdev->dev;
+ 
+@@ -83,8 +92,16 @@
+ };
+ MODULE_DEVICE_TABLE(of, mt6323_pwrc_dt_match);
+ 
++static const struct platform_device_id mt6323_pwrc_ids[] = {
++	{ "mt6323-pwrc", 0 },
++	{ "mt6392-pwrc", RTC_BBPU_AUTO | RTC_BBPU_PWREN },
++	{}
++};
++MODULE_DEVICE_TABLE(platform, mt6323_pwrc_ids);
++
+ static struct platform_driver mt6323_pwrc_driver = {
+ 	.probe          = mt6323_pwrc_probe,
++	.id_table       = mt6323_pwrc_ids,
+ 	.driver         = {
+ 		.name   = "mt6323-pwrc",
+ 		.of_match_table = mt6323_pwrc_dt_match,

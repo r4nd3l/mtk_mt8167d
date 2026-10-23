@@ -3,7 +3,7 @@
 
 pkgname=linux-lenovo-tabe7
 pkgver=7.3.0_rc5
-pkgrel=74
+pkgrel=75
 pkgdesc="Lenovo Tab E7 (TB-7104F) kernel fork"
 arch="aarch64"
 _carch="arm64"
@@ -57,6 +57,7 @@ source="
 	0029-drm-imagination-brn65273-region-header-pages.patch
 	0030-drm-imagination-hwrt-simple-parameter-format-v1.patch
 	0031-drm-imagination-mmu-sync-pd-pc-on-table-removal.patch
+	0032-mfd-power-reset-mt6392-power-off.patch
 "
 builddir="$srcdir/linux-$_commit"
 
@@ -104,7 +105,7 @@ package() {
 
 sha512sums="
 d865c8da9ca8ba19afa3bd3347e64fe097e0f2bb537380e8f5dc258a4340672d5bea02c674d4424a252edd0e48c47023e5e3699fd1b5641e44c7069e686eed44  linux-lenovo-tabe7-1e18b5439b06e4c670eb83a6764bde9bcd56ac7b.tar.gz
-5dac7e630ae5927c7398cf288a7c694bd42ad0d041fa5d4dd909f6ea0bee021b9bb9a8b573409b05102cd83f8cdf580f323f86a0a3b4ed465ebce7cc32dc0cec  config-lenovo-tabe7.aarch64
+90b3dcd51d408c8ab9b20e7f2134c2a691e91df7bbadf2559b2a1fd939b5621fa9bb21820b5b8680324d037c57de2b52c10409ccee6ffab37bb91fbd700f7cca  config-lenovo-tabe7.aarch64
 525287ed132a95a39f0f159642239ece1b7b6754248b4e361a674cda9e8a23dcd1956346b6585e14d9c4f9a7d1081d99d66ff173890dd93194ebc227889a1a8b  mt6392_charger.c
 9d11124eeb9b603018429640a778b92d526df5eb15b8d44a8f3820fc091854dad30ed31240ee5a804490a6efa2031ef62d7f58b572fd1fdca495246a7e766bb1  mt8167-mt6392.c
 69fb1cb475df8228cd7f0b336bbe28fb4ceadea4561f13824a65f5aaf88bc374817f9607b0d882148d3e3cc551e36e1db6b0fa4583cae4ca1c1e1318a014b816  mt8167-camsv.c
@@ -141,4 +142,5 @@ c62703c9a955e3f3296ade97f8f189d12a4b73e2a3fface4bc5db9cbd93829ec639d12466fa7c89d
 bc0ff45b8fc455d9fb02698b7d9f7c3819e713197ca3c019df85ca2e5ad75f16ecceb04a00f455139e75e028992c36c597b41d681451f7411ecba23a92cdb8be  0029-drm-imagination-brn65273-region-header-pages.patch
 253a070ef7479f7db634e9b6ca438b83a59e7a456327f9565390740f31dcb3d16670bf760a30c8e85426390db2cb50ae9fd385cfdb270654d8845bbed623eee7  0030-drm-imagination-hwrt-simple-parameter-format-v1.patch
 4dfe2ee12ba043ecc5b46d73f1571e05a8397fd330238d256eead4ca59e4c528d65715864b2aeb9d0897dbd39d25ac4fda125de3a9b50885989ba495377e36f4  0031-drm-imagination-mmu-sync-pd-pc-on-table-removal.patch
+27e12c56eb788b2c482100e5cb0ceb9200bce7941096692d2362f0620255247ab4d434898daaeb0657f88882545f0b4d0d5257e2d3bc2bb964f68539000cdeb2  0032-mfd-power-reset-mt6392-power-off.patch
 "
