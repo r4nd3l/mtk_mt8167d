@@ -7,7 +7,7 @@
 # run in a cross build.
 pkgname=mesa-pvr-tabe7
 pkgver=26.2.5
-pkgrel=41
+pkgrel=43
 pkgdesc="Mesa PowerVR Vulkan driver with GE8300 (SIPF v1) patches"
 url="https://www.mesa3d.org"
 arch="aarch64"
@@ -55,7 +55,6 @@ source="https://mesa.freedesktop.org/archive/mesa-$pkgver.tar.xz
 	0014-pvr-reuse-spill-scratch-memory-per-cmd-buffer.patch
 	0015-wsi-cpu-image-64-byte-stride.patch
 	0017-pvr-sipf-v1-transfer-pds-uniform-base.patch
-	0018-pvr-split-odd-stride-image-to-buffer-copies.patch
 	0019-pvr-bypass-slc-for-cpu-written-buffers.patch
 	"
 builddir="$srcdir/mesa-$pkgver"
@@ -115,6 +114,5 @@ f355943ed7b2b7816c4ca49344a27a0e07338df5e0e757c53c5e74f364c362bf8ed015ad032e7001
 3181fc2aceb248b815b913a97a1a4bc685247d38a2cd975c1a9c2d029cc257d0fad75285b4ddd36758da405b01c00b61aa4b4aaf436776f5b1a57200af7f5e74  0014-pvr-reuse-spill-scratch-memory-per-cmd-buffer.patch
 32574cd2909f069228ac967068101664707613b2138f1fec62b63510dc5d53eb27f5a881813e886c7073f2bd9d930925efb470fb28f2c5a42324c666a25d3e0e  0015-wsi-cpu-image-64-byte-stride.patch
 49b57bec2050db059d00d0b946232663bd2ba69bdd92d150a00359846a54977a94e6721d5a53393883efdad8b316e0ac651036ab66a87e474697c4b674a45c07  0017-pvr-sipf-v1-transfer-pds-uniform-base.patch
-02a10eff75c521cf99754aefd0b4257ed42b818b65c06dc2f7bcd22af17267d82b6a31dff310c8ddb0ed79eb65707838b2958d5145e4dd391bb877945a90685b  0018-pvr-split-odd-stride-image-to-buffer-copies.patch
 f90e1e8259cf141efbcb19e1b4d7187d2933f2ccf7e7689218ecd05a0949dbd97a40ef783332ec2a496bf3b57559529b2394a578d0f196781d27a3c0b35ce4f9  0019-pvr-bypass-slc-for-cpu-written-buffers.patch
 "

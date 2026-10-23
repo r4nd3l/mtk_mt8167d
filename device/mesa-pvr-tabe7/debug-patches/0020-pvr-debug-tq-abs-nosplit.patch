@@ -1,0 +1,51 @@
+From: Mate Molnar <matemolnar88@gmail.com>
+Date: Sat, 24 Oct 2026 13:00:00 +0200
+Subject: [PATCH] pvr: PVR_TQ_ABS / PVR_TQ_NOSPLIT experiment knobs (debug)
+
+---
+--- a/src/imagination/vulkan/pvr_arch_job_transfer.c
++++ b/src/imagination/vulkan/pvr_arch_job_transfer.c
+@@ -4183,9 +4183,10 @@
+    if (result != VK_SUCCESS)
+       return result;
+ 
+-   stream_base_vaddr =
+-      PVR_DEV_ADDR(pvr_cs_bo->dev_addr.addr -
+-                   ctx->device->heaps.transfer_frag_heap->base_addr.addr);
++   /* ponytail: experiment PVR_TQ_ABS=1: absolute stream addresses */
++   const uint64_t tq_heap_base =
++      getenv("PVR_TQ_ABS") ? 0 : ctx->device->heaps.transfer_frag_heap->base_addr.addr;
++   stream_base_vaddr = PVR_DEV_ADDR(pvr_cs_bo->dev_addr.addr - tq_heap_base);
+ 
+    cs_ptr = pvr_bo_suballoc_get_map_addr(pvr_cs_bo);
+    blk_cs_ptr = cs_ptr + region_arrays_size / sizeof(uint32_t);
+@@ -4631,9 +4632,7 @@
+    }
+ 
+    pvr_csb_pack (&regs->isp_mtile_base, CR_ISP_MTILE_BASE, reg) {
+-      reg.addr =
+-         PVR_DEV_ADDR(pvr_cs_bo->dev_addr.addr -
+-                      ctx->device->heaps.transfer_frag_heap->base_addr.addr);
++      reg.addr = PVR_DEV_ADDR(pvr_cs_bo->dev_addr.addr - tq_heap_base);
+    }
+ 
+    pvr_csb_pack (&regs->isp_render, CR_ISP_RENDER, reg) {
+--- a/src/imagination/vulkan/rogue/pvr_blit.c
++++ b/src/imagination/vulkan/rogue/pvr_blit.c
+@@ -25,6 +25,7 @@
+ #include <stdbool.h>
+ #include <stddef.h>
+ #include <stdint.h>
++#include <stdlib.h>
+ #include <vulkan/vulkan.h>
+ 
+ #include "pvr_blit.h"
+@@ -1159,7 +1160,7 @@
+           * regions one row at a time: with a single row the stride does not
+           * matter and the plain path is used.
+           */
+-         const bool split_rows = (dst_surface.stride & 1U) &&
++         const bool split_rows = !getenv("PVR_TQ_NOSPLIT") && (dst_surface.stride & 1U) &&
+                                  dst_rect.extent.height > 1U &&
+                                  !util_format_is_compressed(pformat);
+          const uint32_t row_pitch =

@@ -2,7 +2,7 @@
 pkgname=device-lenovo-tabe7
 pkgdesc="Lenovo Tab E7 (TB-7104F)"
 pkgver=0.1
-pkgrel=45
+pkgrel=46
 url="https://postmarketos.org"
 license="MIT"
 arch="aarch64"
@@ -127,6 +127,16 @@ nonfree_firmware() {
 	for f in rogue_22.67.54.30_v1.fw rogue_22.68.54.30_v1.fw; do
 		install -Dm644 "$srcdir"/$f "$subpkgdir"/lib/firmware/powervr/$f
 	done
+	# The 22.68 TQ FAST_2D kick writes a fixed 0x10000 to CR_ISP_PIXEL_BASE
+	# (0xFC8). On this core the IPF fetches the heap-relative ISP stream from
+	# PIXEL_BASE + offset, and the vendor UM sets it to the transfer heap base,
+	# so the stream was read from address 0 (MMU fault, GPU lockup). Patch
+	# "lui $2,1; move $3,$zero" to "addiu $3,$zero,0xe4; move $2,$zero":
+	# PIXEL_BASE = 0xE4_0000_0000 = ROGUE_TRANSFER_FRAG_HEAP_BASE.
+	f="$subpkgdir"/lib/firmware/powervr/rogue_22.68.54.30_v1.fw
+	[ "$(od -An -tx1 -j $((0x10f00)) -N6 "$f" | tr -d ' ')" = a2410100600c ]
+	printf '\140\060\344\000\100\014' |
+		dd of="$f" bs=1 seek=$((0x10f00)) conv=notrunc status=none
 }
 
 sha512sums="
