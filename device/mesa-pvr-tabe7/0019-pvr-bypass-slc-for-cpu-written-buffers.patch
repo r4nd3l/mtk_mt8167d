@@ -1,0 +1,32 @@
+From: Mate Molnar <matemolnar88@gmail.com>
+Date: Sat, 24 Oct 2026 11:40:00 +0200
+Subject: [PATCH] pvr: bypass the GPU SLC for CPU-accessible buffers
+
+The powervr kernel driver never issues SLC flush/invalidate (the FW's
+SLCFLUSHINVAL command is defined but unused), so on non-coherent SoCs the
+GPU system level cache can return stale lines for memory the CPU has just
+written, e.g. after a page is reused. On the MT8167 GE8300 transfer jobs
+after a render workload then ran PDS programs on stale data and wrote to
+random addresses (fragment DM guilty lockup, ~1 in 4 vkmark cube->clear
+runs). Map CPU-accessible buffers with DRM_PVR_BO_BYPASS_DEVICE_CACHE:
+0/40 lockups since, ~4-7 % slower in vkmark/GSK.
+---
+--- a/src/imagination/vulkan/winsys/powervr/pvr_drm_bo.c
++++ b/src/imagination/vulkan/winsys/powervr/pvr_drm_bo.c
+@@ -174,8 +174,15 @@
+    if (ws_flags & PVR_WINSYS_BO_FLAG_PM_FW_PROTECT)
+       drm_flags |= DRM_PVR_BO_PM_FW_PROTECT;
+ 
++   /* CPU-written buffers bypass the GPU SLC. Nothing in the kernel driver
++    * flushes/invalidates the SLC when the CPU writes or when pages are
++    * reused, so on a non-coherent SoC the GPU can read stale lines: on the
++    * GE8300 (MT8167) PDS data/code written after another workload made the
++    * PDS write to garbage addresses (fragment DM guilty lockup).
++    */
+    if (ws_flags & PVR_WINSYS_BO_FLAG_CPU_ACCESS)
+-      drm_flags |= DRM_PVR_BO_ALLOW_CPU_USERSPACE_ACCESS;
++      drm_flags |= DRM_PVR_BO_ALLOW_CPU_USERSPACE_ACCESS |
++                   DRM_PVR_BO_BYPASS_DEVICE_CACHE;
+ 
+    return drm_flags;
+ }
