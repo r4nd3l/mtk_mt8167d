@@ -1,0 +1,40 @@
+From: Mate Molnar <matemolnar88@gmail.com>
+Date: Fri, 23 Oct 2026 06:10:00 +0200
+Subject: [PATCH] pvr: fix double-stride transfers (height, background source)
+
+Copies to a linear destination with an odd stride double the stride and
+width so each destination row holds two source rows, but kept the full
+height. The clip blit then loaded and stored twice the surface size, past
+the end of the buffer: on the GE8300 every odd-width image->buffer copy
+faulted and locked up the fragment DM.
+---
+--- a/src/imagination/vulkan/pvr_arch_job_transfer.c
++++ b/src/imagination/vulkan/pvr_arch_job_transfer.c
+@@ -4694,7 +4694,14 @@
+       ~(PVR_TRANSFER_CMD_FLAGS_FAST2D | PVR_TRANSFER_CMD_FLAGS_FILL |
+         PVR_TRANSFER_CMD_FLAGS_DSMERGE | PVR_TRANSFER_CMD_FLAGS_PICKD);
+ 
+-   bg_cmd.source_count = state->custom_mapping.pass_count > 0U ? 0 : 1;
++   /* A double-stride destination is a plain linear surface, so the
++    * background can be loaded from it like in the single-mapping case; the
++    * source-less background faults on the GE8300 (address 0).
++    */
++   bg_cmd.source_count = state->custom_mapping.pass_count > 0U &&
++                               !state->custom_mapping.double_stride
++                            ? 0
++                            : 1;
+    if (bg_cmd.source_count > 0) {
+       struct pvr_transfer_cmd_source *src = &bg_cmd.sources[0];
+ 
+@@ -5558,6 +5565,11 @@
+    if (custom_mapping->double_stride) {
+       transfer_cmd->dst.width *= 2U;
+       transfer_cmd->dst.stride *= 2U;
++      /* Two source rows per destination row now: without halving the height
++       * the clip blit loads/stores twice the surface, past the end of the
++       * buffer (GE8300: fragment page fault + guilty lockup on odd widths).
++       */
++      transfer_cmd->dst.height = DIV_ROUND_UP(transfer_cmd->dst.height, 2U);
+    }
+ 
+    if (custom_mapping->texel_unwind_src > 0U) {

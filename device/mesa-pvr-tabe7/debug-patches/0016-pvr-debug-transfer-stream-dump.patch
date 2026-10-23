@@ -1,0 +1,61 @@
+From: Mate Molnar <matemolnar88@gmail.com>
+Date: Fri, 23 Oct 2026 05:40:00 +0200
+Subject: [PATCH] pvr: PVR_TQ_DEBUG dump of transfer mappings and control stream (debug)
+
+---
+--- a/src/imagination/vulkan/pvr_arch_job_transfer.c
++++ b/src/imagination/vulkan/pvr_arch_job_transfer.c
+@@ -25,6 +25,8 @@
+ #include <stdbool.h>
+ #include <stddef.h>
+ #include <stdint.h>
++#include <stdio.h>
++#include <stdlib.h>
+ #include <string.h>
+ #include <vulkan/vulkan.h>
+ 
+@@ -4620,6 +4622,44 @@
+       cs_ptr += pvr_cmd_length(IPF_CONTROL_STREAM);
+    }
+ 
++   /* ponytail: temporary debug dump of the transfer control stream. */
++   if (getenv("PVR_TQ_DEBUG")) {
++      const uint32_t *cs0 = pvr_bo_suballoc_get_map_addr(pvr_cs_bo);
++      fprintf(stderr,
++              "TQ pass %u/%u sources=%u prim_blks=%u entries=%u linked=%d "
++              "dst %ux%u stride %u layout %d\n",
++              state->pass_idx, state->custom_mapping.pass_count, num_sources,
++              num_prim_blks, v1_num_entries, was_linked,
++              transfer_cmd->dst.width, transfer_cmd->dst.height,
++              transfer_cmd->dst.stride, transfer_cmd->dst.mem_layout);
++      for (uint32_t s = 0; s < transfer_cmd->source_count; s++) {
++         const struct pvr_transfer_cmd_source *src = &transfer_cmd->sources[s];
++         for (uint32_t m = 0; m < src->mapping_count; m++)
++            fprintf(stderr, "  src%u map%u src %d,%d %ux%u -> dst %d,%d %ux%u\n", s, m,
++                    src->mappings[m].src_rect.offset.x, src->mappings[m].src_rect.offset.y,
++                    src->mappings[m].src_rect.extent.width, src->mappings[m].src_rect.extent.height,
++                    src->mappings[m].dst_rect.offset.x, src->mappings[m].dst_rect.offset.y,
++                    src->mappings[m].dst_rect.extent.width, src->mappings[m].dst_rect.extent.height);
++      }
++      if (pass) {
++         for (uint32_t s = 0; s < pass->source_count; s++)
++            for (uint32_t m = 0; m < pass->sources[s].mapping_count; m++)
++               fprintf(stderr, "  pass src%u map%u src %d,%d %ux%u -> dst %d,%d %ux%u\n", s, m,
++                       pass->sources[s].mappings[m].src_rect.offset.x,
++                       pass->sources[s].mappings[m].src_rect.offset.y,
++                       pass->sources[s].mappings[m].src_rect.extent.width,
++                       pass->sources[s].mappings[m].src_rect.extent.height,
++                       pass->sources[s].mappings[m].dst_rect.offset.x,
++                       pass->sources[s].mappings[m].dst_rect.offset.y,
++                       pass->sources[s].mappings[m].dst_rect.extent.width,
++                       pass->sources[s].mappings[m].dst_rect.extent.height);
++      }
++      fprintf(stderr, "  cs:");
++      for (uint32_t i = 0; i < MIN2(total_stream_size / 4U, 96U); i++)
++         fprintf(stderr, "%s%08x", i % 8 ? " " : "\n   ", cs0[i]);
++      fprintf(stderr, "\n");
++   }
++
+    pvr_csb_pack (&regs->isp_mtile_base, CR_ISP_MTILE_BASE, reg) {
+       reg.addr =
+          PVR_DEV_ADDR(pvr_cs_bo->dev_addr.addr -

@@ -7,7 +7,7 @@
 # run in a cross build.
 pkgname=mesa-pvr-tabe7
 pkgver=26.2.5
-pkgrel=26
+pkgrel=30
 pkgdesc="Mesa PowerVR Vulkan driver with GE8300 (SIPF v1) patches"
 url="https://www.mesa3d.org"
 arch="aarch64"
