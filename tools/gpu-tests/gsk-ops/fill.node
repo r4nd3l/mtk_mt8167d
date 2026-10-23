@@ -1,0 +1,4 @@
+container {
+  color { bounds: 0 0 400 300; color: #fafafa; }
+  fill { path: "M 10 10 L 100 10 L 50 90 Z"; fill-rule: winding; child: color { bounds: 0 0 200 200; color: red; } }
+}

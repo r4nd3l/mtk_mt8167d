@@ -1,0 +1,4 @@
+container {
+  color { bounds: 0 0 400 300; color: #fafafa; }
+  shadow { shadows: black 2 2 4; child: color { bounds: 20 20 100 100; color: green; } }
+}

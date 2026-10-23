@@ -1,0 +1,4 @@
+container {
+  color { bounds: 0 0 400 300; color: #fafafa; }
+  inset-shadow { outline: 20 20 120 80 / 8; color: rgba(0,0,0,0.5); dx: 1; dy: 1; spread: 0; blur: 6; }
+}

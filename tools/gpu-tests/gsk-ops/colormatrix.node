@@ -1,0 +1,4 @@
+container {
+  color { bounds: 0 0 400 300; color: #fafafa; }
+  color-matrix { matrix: matrix3d(0.3,0.3,0.3,0, 0.6,0.6,0.6,0, 0.1,0.1,0.1,0, 0,0,0,1); child: color { bounds: 10 10 100 100; color: red; } }
+}

@@ -1,0 +1,4 @@
+container {
+  color { bounds: 0 0 400 300; color: #fafafa; }
+  radial-gradient { bounds: 10 10 200 200; center: 110 110; hradius: 100; vradius: 100; start: 0; end: 1; stops: 0 red, 1 blue; }
+}

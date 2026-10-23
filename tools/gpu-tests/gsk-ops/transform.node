@@ -1,0 +1,4 @@
+container {
+  color { bounds: 0 0 400 300; color: #fafafa; }
+  transform { transform: rotate(30); child: color { bounds: 50 50 100 100; color: red; } }
+}

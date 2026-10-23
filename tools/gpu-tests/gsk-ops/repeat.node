@@ -1,0 +1,4 @@
+container {
+  color { bounds: 0 0 400 300; color: #fafafa; }
+  repeat { bounds: 0 0 300 200; child-bounds: 0 0 20 20; child: color { bounds: 0 0 10 10; color: red; } }
+}

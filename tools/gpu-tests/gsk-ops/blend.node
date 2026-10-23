@@ -1,0 +1,4 @@
+container {
+  color { bounds: 0 0 400 300; color: #fafafa; }
+  blend { mode: multiply; bottom: color { bounds: 10 10 100 100; color: red; } top: color { bounds: 50 50 100 100; color: blue; } }
+}

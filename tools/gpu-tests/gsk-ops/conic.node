@@ -1,0 +1,4 @@
+container {
+  color { bounds: 0 0 400 300; color: #fafafa; }
+  conic-gradient { bounds: 10 10 200 200; center: 110 110; rotation: 0; stops: 0 red, 1 blue; }
+}

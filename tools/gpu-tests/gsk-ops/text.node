@@ -1,0 +1,4 @@
+container {
+  color { bounds: 0 0 400 300; color: #fafafa; }
+  text { font: "Cantarell 15"; glyphs: "Move to"; offset: 20 40; color: #303030; }
+}

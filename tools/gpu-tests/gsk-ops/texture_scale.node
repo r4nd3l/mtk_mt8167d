@@ -1,0 +1,4 @@
+container {
+  color { bounds: 0 0 400 300; color: #fafafa; }
+  texture-scale { bounds: 10 10 200 200; texture: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAMklEQVR4nO3OsQkAIBDAwAgWP7ab6xg2F0h/q86d6te76WsAAAAAAAAAAAAAAAAAAAAPUvkD7WyPq0MAAAAASUVORK5CYII="); filter: linear; }
+}

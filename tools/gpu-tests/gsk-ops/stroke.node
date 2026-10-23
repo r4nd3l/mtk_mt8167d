@@ -1,0 +1,4 @@
+container {
+  color { bounds: 0 0 400 300; color: #fafafa; }
+  stroke { path: "M 10 10 L 100 10 L 50 90 Z"; line-width: 3; child: color { bounds: 0 0 200 200; color: red; } }
+}

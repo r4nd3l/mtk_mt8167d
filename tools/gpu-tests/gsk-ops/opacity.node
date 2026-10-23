@@ -1,0 +1,4 @@
+container {
+  color { bounds: 0 0 400 300; color: #fafafa; }
+  opacity { opacity: 0.5; child: color { bounds: 10 10 100 100; color: red; } }
+}

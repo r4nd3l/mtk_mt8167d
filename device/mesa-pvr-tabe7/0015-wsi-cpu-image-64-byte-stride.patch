@@ -1,0 +1,25 @@
+From: Mate Molnar <matemolnar88@gmail.com>
+Date: Fri, 23 Oct 2026 05:20:00 +0200
+Subject: [PATCH] vulkan/wsi: 64-byte row alignment for CPU (wl_shm) images
+
+Odd-width windows gave the swapchain blit an odd linear destination stride.
+pvr then uses its "double stride" transfer, which locks up the GE8300
+(SIPF v1; Fragment DM guilty lockup, fault address 0) as soon as a dialog
+with an odd width opens. wl_shm accepts any stride, so align rows to 64 B.
+---
+--- a/src/vulkan/wsi/wsi_common.c
++++ b/src/vulkan/wsi/wsi_common.c
+@@ -3629,8 +3629,12 @@
+       return result;
+ 
+    if (chain->blit.type != WSI_SWAPCHAIN_NO_BLIT) {
++      /* 64-byte rows: keeps the blit destination stride an even number of
++       * pixels. pvr handles odd linear strides with a "double stride"
++       * transfer that hangs the GE8300 (SIPF v1); wl_shm takes any stride.
++       */
+       wsi_configure_buffer_image(chain, pCreateInfo,
+-                                 1 /* stride_align */,
++                                 64 /* stride_align */,
+                                  1 /* size_align */,
+                                  info);
+ 
