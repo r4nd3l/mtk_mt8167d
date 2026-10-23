@@ -1,6 +1,6 @@
 From: Mate Molnar <matemolnar88@gmail.com>
-Date: Fri, 23 Oct 2026 05:40:00 +0200
-Subject: [PATCH] pvr: PVR_TQ_DEBUG dump of transfer mappings and control stream (debug)
+Date: Fri, 23 Oct 2026 12:00:00 +0200
+Subject: [PATCH] pvr: PVR_TQ_DEBUG dump of transfer mappings, control stream and kick regs (debug)
 
 ---
 --- a/src/imagination/vulkan/pvr_arch_job_transfer.c
@@ -59,3 +59,31 @@ Subject: [PATCH] pvr: PVR_TQ_DEBUG dump of transfer mappings and control stream 
     pvr_csb_pack (&regs->isp_mtile_base, CR_ISP_MTILE_BASE, reg) {
        reg.addr =
           PVR_DEV_ADDR(pvr_cs_bo->dev_addr.addr -
+@@ -6001,6 +6041,27 @@
+ 
+       pvr_submit_info_stream_init(ctx, prep_data, cmd);
+       pvr_submit_info_flags_init(dev_info, prep_data, &cmd->flags);
++
++      if (getenv("PVR_TQ_DEBUG")) {
++         const struct pvr_winsys_transfer_regs *r = &prep_data->state.regs;
++         fprintf(stderr,
++                 "TQ kick %u/%u: frag_screen %08x isp_aa %08x bgobjvals %08x isp_ctl %08x "
++                 "mtile_base %016llx mtile_size %08x render %08x origin %08x rgn %08x\n"
++                 "  pds_bgnd0 %016llx bgnd1 %016llx bgnd3 %016llx event pds code %08x data %08x info %08x\n"
++                 "  usc_clear %08x %08x %08x %08x pix_out %08x\n",
++                 i, submit->prep_count, r->frag_screen, r->isp_aa, r->isp_bgobjvals,
++                 r->isp_ctl, (unsigned long long)r->isp_mtile_base, r->isp_mtile_size,
++                 r->isp_render, r->isp_render_origin, r->isp_rgn,
++                 (unsigned long long)r->pds_bgnd0_base, (unsigned long long)r->pds_bgnd1_base,
++                 (unsigned long long)r->pds_bgnd3_sizeinfo, r->event_pixel_pds_code,
++                 r->event_pixel_pds_data, r->event_pixel_pds_info, r->usc_clear_register0,
++                 r->usc_clear_register1, r->usc_clear_register2, r->usc_clear_register3,
++                 r->usc_pixel_output_ctrl);
++         for (uint32_t k = 0; k < ARRAY_SIZE(r->pbe_wordx_mrty); k++)
++            if (r->pbe_wordx_mrty[k])
++               fprintf(stderr, "  pbe[%u] %016llx\n", k,
++                       (unsigned long long)r->pbe_wordx_mrty[k]);
++      }
+    }
+ }
+ 

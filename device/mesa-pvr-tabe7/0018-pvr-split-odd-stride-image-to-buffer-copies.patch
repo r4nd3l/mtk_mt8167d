@@ -1,0 +1,93 @@
+From: Mate Molnar <matemolnar88@gmail.com>
+Date: Fri, 23 Oct 2026 13:10:00 +0200
+Subject: [PATCH] pvr: copy odd-stride image -> buffer regions row by row
+
+A linear destination with an odd row length sends the copy down the
+"double stride" clip blit, a primitive based FAST_2D transfer that hangs
+the GE8300 (SIPF v1, Fragment DM page fault at address 0). Single-row
+copies don't care about the stride and use the working FAST_SCALE path,
+so split such regions into one transfer per row. Slower, but only odd
+bufferRowLength readbacks take it (WSI blits are already 64-byte aligned).
+---
+--- a/src/imagination/vulkan/rogue/pvr_blit.c
++++ b/src/imagination/vulkan/rogue/pvr_blit.c
+@@ -1154,29 +1154,56 @@
+                                  region->imageSubresource.aspectMask);
+ 
+       for (uint32_t j = region->imageOffset.z; j < max_depth_slice; j++) {
+-         struct pvr_transfer_cmd *transfer_cmd;
+-         VkResult result;
+-
+-         /* TODO: See if we can allocate all the transfer cmds in one go. */
+-         transfer_cmd = pvr_transfer_cmd_alloc(cmd_buffer);
+-         if (!transfer_cmd)
+-            return vk_error(cmd_buffer->device, VK_ERROR_OUT_OF_HOST_MEMORY);
+-
+-         transfer_cmd->sources[0].mappings[0].src_rect = src_rect;
+-         transfer_cmd->sources[0].mappings[0].dst_rect = dst_rect;
+-         transfer_cmd->sources[0].mapping_count++;
+-
+-         transfer_cmd->sources[0].surface = src_surface;
+-         transfer_cmd->source_count = 1;
+-
+-         transfer_cmd->dst = dst_surface;
+-         transfer_cmd->scissor = dst_rect;
+-
+-         result =
+-            pvr_arch_cmd_buffer_add_transfer_cmd(cmd_buffer, transfer_cmd);
+-         if (result != VK_SUCCESS) {
+-            vk_free(&cmd_buffer->vk.pool->alloc, transfer_cmd);
+-            return result;
++         /* An odd linear destination stride takes the "double stride"
++          * clip-blit path, which hangs the GE8300 (SIPF v1). Copy such
++          * regions one row at a time: with a single row the stride does not
++          * matter and the plain path is used.
++          */
++         const bool split_rows = (dst_surface.stride & 1U) &&
++                                 dst_rect.extent.height > 1U &&
++                                 !util_format_is_compressed(pformat);
++         const uint32_t row_pitch =
++            dst_surface.stride * vk_format_get_blocksize(dst_format);
++         const uint32_t rows = split_rows ? dst_rect.extent.height : 1U;
++
++         for (uint32_t r = 0; r < rows; r++) {
++            struct pvr_transfer_cmd *transfer_cmd;
++            VkResult result;
++
++            /* TODO: See if we can allocate all the transfer cmds in one go. */
++            transfer_cmd = pvr_transfer_cmd_alloc(cmd_buffer);
++            if (!transfer_cmd)
++               return vk_error(cmd_buffer->device, VK_ERROR_OUT_OF_HOST_MEMORY);
++
++            transfer_cmd->sources[0].mappings[0].src_rect = src_rect;
++            transfer_cmd->sources[0].mappings[0].dst_rect = dst_rect;
++            transfer_cmd->sources[0].mapping_count++;
++
++            transfer_cmd->sources[0].surface = src_surface;
++            transfer_cmd->source_count = 1;
++
++            transfer_cmd->dst = dst_surface;
++            transfer_cmd->scissor = dst_rect;
++
++            if (split_rows) {
++               VkRect2D *const s = &transfer_cmd->sources[0].mappings[0].src_rect;
++               VkRect2D *const d = &transfer_cmd->sources[0].mappings[0].dst_rect;
++
++               s->offset.y += r;
++               s->extent.height = 1U;
++               d->extent.height = 1U;
++               transfer_cmd->dst.dev_addr.addr += (uint64_t)r * row_pitch;
++               transfer_cmd->dst.height = 1U;
++               transfer_cmd->dst.stride = dst_surface.stride + 1U;
++               transfer_cmd->scissor = *d;
++            }
++
++            result =
++               pvr_arch_cmd_buffer_add_transfer_cmd(cmd_buffer, transfer_cmd);
++            if (result != VK_SUCCESS) {
++               vk_free(&cmd_buffer->vk.pool->alloc, transfer_cmd);
++               return result;
++            }
+          }
+ 
+          dst_surface.dev_addr.addr += buffer_slice_size;
