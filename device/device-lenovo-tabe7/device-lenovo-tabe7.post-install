@@ -13,10 +13,13 @@ rc-update -q add mtk-wifi default
 rc-update -q add avahi-daemon default
 rc-update -q add battery-gauge-state default
 
-# No GPU driver (PowerVR GE8300): plain CPU rendering is the least bad path.
-# /etc/environment is read by pam_env, so greetd's greeter and the Phosh
-# session both get these.
-for kv in WLR_RENDERER=pixman GSK_RENDERER=cairo; do
-	grep -q "^${kv%%=*}=" /etc/environment 2>/dev/null || echo "$kv" >> /etc/environment
-done
+# phoc stays on pixman (simpledrm has no GPU import). GTK renders on the
+# GE8300 unless the user ran `gpu-ui off` (marker file).
+# /etc/environment is read by pam_env: greeter and Phosh session both get it.
+grep -q "^WLR_RENDERER=" /etc/environment 2>/dev/null || echo "WLR_RENDERER=pixman" >> /etc/environment
+if [ -e /etc/lenovo-tabe7-gpu-ui-off ]; then
+	/usr/bin/gpu-ui off >/dev/null
+else
+	/usr/bin/gpu-ui on >/dev/null
+fi
 exit 0

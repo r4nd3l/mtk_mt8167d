@@ -1,0 +1,43 @@
+#!/bin/sh
+# Switch the GTK/Phosh UI between the PowerVR GE8300 (Vulkan) and CPU (cairo):
+#   gpu-ui on | off | status      (as root; takes effect after reboot/re-login)
+# /etc/environment is read by pam_env, so greeter and session both follow it.
+# "off" also blacklists powervr; the choice survives package upgrades.
+set -e
+ENV=/etc/environment
+OFF_MARK=/etc/lenovo-tabe7-gpu-ui-off
+BLACKLIST=/etc/modprobe.d/powervr-off.conf
+
+set_env() { # KEY VALUE ("" = remove)
+	sed -i "/^$1=/d" "$ENV"
+	[ -n "$2" ] && echo "$1=$2" >> "$ENV"
+	return 0
+}
+
+case "$1" in
+on)
+	set_env GSK_RENDERER vulkan
+	set_env PVR_I_WANT_A_BROKEN_VULKAN_DRIVER 1
+	# phoc (pixman on simpledrm) has no linux-dmabuf: present via wl_shm copy
+	set_env MESA_VK_WSI_DEBUG sw
+	rm -f "$OFF_MARK" "$BLACKLIST"
+	echo "GPU UI on (reboot to apply)"
+	;;
+off)
+	set_env GSK_RENDERER cairo
+	set_env PVR_I_WANT_A_BROKEN_VULKAN_DRIVER ""
+	set_env MESA_VK_WSI_DEBUG ""
+	echo "blacklist powervr" > "$BLACKLIST"
+	touch "$OFF_MARK"
+	echo "GPU UI off (reboot to apply)"
+	;;
+status)
+	grep -E "^(GSK_RENDERER|PVR_I_WANT_A_BROKEN_VULKAN_DRIVER|MESA_VK_WSI_DEBUG)=" "$ENV" || true
+	[ -e "$BLACKLIST" ] && echo "powervr: blacklisted" || echo "powervr: autoload"
+	[ -e /dev/dri/renderD128 ] && echo "powervr: loaded" || echo "powervr: not loaded"
+	;;
+*)
+	echo "usage: gpu-ui on|off|status" >&2
+	exit 2
+	;;
+esac
