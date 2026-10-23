@@ -1,0 +1,50 @@
+From: Mate Molnar <matemolnar88@gmail.com>
+Date: Fri, 23 Oct 2026 15:40:00 +0200
+Subject: [PATCH] drm/imagination: sync PD/PC when unmapping frees a page table
+
+When an unmap empties a level 0 (or level 1) page table, the parent PD (or
+PC) entry is cleared and the table page is freed, but the op context only
+required a level 0 sync: the cleared parent entry was neither written back
+for the device nor were the PD/PC caches invalidated. The GPU could then
+keep walking through the freed table page. The vendor DDK invalidates the
+matching level whenever it changes an entry at that level.
+
+On a GE8300 (MT8167) this showed up as rare fragment-DM lockups with PDS
+writes to random out-of-heap addresses after an app freed a lot of memory.
+---
+--- a/drivers/gpu/drm/imagination/pvr_mmu.c
++++ b/drivers/gpu/drm/imagination/pvr_mmu.c
+@@ -1495,6 +1495,10 @@
+ 	op_ctx->curr_page.l1_table = child_table;
+ }
+ 
++static void
++pvr_mmu_op_context_require_sync(struct pvr_mmu_op_context *op_ctx,
++				enum pvr_mmu_sync_level level);
++
+ /**
+  * pvr_page_table_l2_remove() - Remove a level 1 page table from a level 2 page
+  * table.
+@@ -1516,6 +1520,12 @@
+ 
+ 	pvr_page_table_l2_entry_raw_clear(entry_raw);
+ 
++	/* The L1 table is freed after this op: write the cleared PC entry back
++	 * and invalidate the PC cache first, or the GPU can keep walking into
++	 * the freed page (seen on GE8300 as PDS writes to garbage addresses).
++	 */
++	pvr_mmu_op_context_require_sync(op_ctx, PVR_MMU_SYNC_LEVEL_2);
++
+ 	l2_table->entries[op_ctx->curr_page.l1_table->parent_idx] = NULL;
+ 	op_ctx->curr_page.l1_table->parent_idx = PVR_IDX_INVALID;
+ 	op_ctx->curr_page.l1_table->next_free = op_ctx->unmap.l1_free_tables;
+@@ -1579,6 +1589,9 @@
+ 
+ 	pvr_page_table_l1_entry_raw_clear(entry_raw);
+ 
++	/* Same for the PD entry of the L0 table that is freed after this op. */
++	pvr_mmu_op_context_require_sync(op_ctx, PVR_MMU_SYNC_LEVEL_1);
++
+ 	op_ctx->curr_page.l1_table->entries[op_ctx->curr_page.l0_table->parent_idx] = NULL;
+ 	op_ctx->curr_page.l0_table->parent_idx = PVR_IDX_INVALID;
+ 	op_ctx->curr_page.l0_table->next_free = op_ctx->unmap.l0_free_tables;

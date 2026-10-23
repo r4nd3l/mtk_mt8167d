@@ -1,0 +1,28 @@
+From: Mate Molnar <matemolnar88@gmail.com>
+Date: Fri, 23 Oct 2026 15:00:00 +0200
+Subject: [PATCH] pvr: PVR_ZERO_SUBALLOC zeroes every suballocation (experiment)
+
+---
+--- a/src/imagination/vulkan/pvr_bo.c
++++ b/src/imagination/vulkan/pvr_bo.c
+@@ -28,6 +28,7 @@
+ #include <limits.h>
+ #include <stddef.h>
+ #include <stdint.h>
++#include <stdlib.h>
+ #include <stdio.h>
+ #include <vulkan/vulkan.h>
+ 
+@@ -577,6 +578,12 @@
+     * cache line.
+     */
+    align = MAX2(align, cache_line_size);
++
++   /* ponytail: experiment, zero every suballocation (incl. the aligned tail)
++    * to test whether the GPU consumes stale bytes past what the driver writes.
++    */
++   if (getenv("PVR_ZERO_SUBALLOC"))
++      zero_on_alloc = true;
+    assert(util_is_power_of_two_nonzero(align));
+    aligned_size = ALIGN_POT(size, align);
+ 

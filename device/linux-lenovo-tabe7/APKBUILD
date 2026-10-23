@@ -3,7 +3,7 @@
 
 pkgname=linux-lenovo-tabe7
 pkgver=7.3.0_rc5
-pkgrel=73
+pkgrel=74
 pkgdesc="Lenovo Tab E7 (TB-7104F) kernel fork"
 arch="aarch64"
 _carch="arm64"
@@ -56,6 +56,7 @@ source="
 	0028-drm-imagination-mips-fw-on-32-bit-phys-bus.patch
 	0029-drm-imagination-brn65273-region-header-pages.patch
 	0030-drm-imagination-hwrt-simple-parameter-format-v1.patch
+	0031-drm-imagination-mmu-sync-pd-pc-on-table-removal.patch
 "
 builddir="$srcdir/linux-$_commit"
 
@@ -139,4 +140,5 @@ c62703c9a955e3f3296ade97f8f189d12a4b73e2a3fface4bc5db9cbd93829ec639d12466fa7c89d
 679b067c28be4e9b59e6b4b7c3c3940abb1e8db720525bf9d9eacc7ff8b2d1813a7bec7330ed1f99b63705f592109d0a79e6ebf7725e522157e8b483a72b3ffb  0028-drm-imagination-mips-fw-on-32-bit-phys-bus.patch
 bc0ff45b8fc455d9fb02698b7d9f7c3819e713197ca3c019df85ca2e5ad75f16ecceb04a00f455139e75e028992c36c597b41d681451f7411ecba23a92cdb8be  0029-drm-imagination-brn65273-region-header-pages.patch
 253a070ef7479f7db634e9b6ca438b83a59e7a456327f9565390740f31dcb3d16670bf760a30c8e85426390db2cb50ae9fd385cfdb270654d8845bbed623eee7  0030-drm-imagination-hwrt-simple-parameter-format-v1.patch
+4dfe2ee12ba043ecc5b46d73f1571e05a8397fd330238d256eead4ca59e4c528d65715864b2aeb9d0897dbd39d25ac4fda125de3a9b50885989ba495377e36f4  0031-drm-imagination-mmu-sync-pd-pc-on-table-removal.patch
 "

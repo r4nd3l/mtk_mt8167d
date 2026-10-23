@@ -182,7 +182,7 @@ int main(int argc, char **argv)
 	VkCommandBufferAllocateInfo cbai = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO, .commandPool = pool, .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY, .commandBufferCount = 1 };
 	VkCommandBuffer cmd;
 	CK(vkAllocateCommandBuffers(dev, &cbai, &cmd));
-	VkCommandBufferBeginInfo bi = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+	VkCommandBufferBeginInfo bi = { .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, .flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT };
 	CK(vkBeginCommandBuffer(cmd, &bi));
 	VkClearValue clear = { .color = { .float32 = { 0.0f, 0.0f, 0.25f, 1.0f } } };
 	VkRenderPassBeginInfo rpbi = { .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO, .renderPass = rp, .framebuffer = fb, .renderArea = ra, .clearValueCount = 1, .pClearValues = &clear };
@@ -196,7 +196,8 @@ int main(int argc, char **argv)
 	VkMemoryBarrier mb = { .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER, .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT };
 	vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 1, &mb, 0, NULL, 0, NULL);
 	VkBufferImageCopy cp = { .imageSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 }, .imageExtent = { W, H, 1 } };
-	vkCmdCopyImageToBuffer(cmd, img, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, buf, 1, &cp);
+	if (!getenv("NOCOPY"))
+		vkCmdCopyImageToBuffer(cmd, img, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, buf, 1, &cp);
 	CK(vkEndCommandBuffer(cmd));
 
 	VkFenceCreateInfo fci = { .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
@@ -207,10 +208,15 @@ int main(int argc, char **argv)
 	const int frames = getenv("FRAMES") ? atoi(getenv("FRAMES")) : 20;
 	VkResult wr = VK_SUCCESS;
 	struct timespec t0, t1;
+	const int nowait = getenv("NOWAIT") != NULL; /* keep many frames in flight */
 	for (int fr = 0; fr <= frames; fr++) {
 		if (fr == 1) clock_gettime(CLOCK_MONOTONIC, &t0); /* frame 0 = warm-up */
+		if (nowait && fr < frames) {
+			CK(vkQueueSubmit(q, 1, &si, VK_NULL_HANDLE));
+			continue;
+		}
 		CK(vkQueueSubmit(q, 1, &si, fence));
-		wr = vkWaitForFences(dev, 1, &fence, VK_TRUE, 10ull * 1000 * 1000 * 1000);
+		wr = vkWaitForFences(dev, 1, &fence, VK_TRUE, 60ull * 1000 * 1000 * 1000);
 		vkResetFences(dev, 1, &fence);
 	}
 	clock_gettime(CLOCK_MONOTONIC, &t1);
