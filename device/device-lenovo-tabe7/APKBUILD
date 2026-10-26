@@ -2,7 +2,7 @@
 pkgname=device-lenovo-tabe7
 pkgdesc="Lenovo Tab E7 (TB-7104F)"
 pkgver=0.1
-pkgrel=47
+pkgrel=48
 url="https://postmarketos.org"
 license="MIT"
 arch="aarch64"
@@ -33,6 +33,8 @@ source="deviceinfo
 	backlight-follow-dpms.initd
 	mtk-wifi.initd
 	battery-gauge-state.initd
+	clock-sanity.initd
+	apk-cache-clean.start
 	upower-lenovo-tabe7.conf
 	usb-host-mode
 	usb-host-mode.desktop
@@ -95,6 +97,10 @@ package() {
 	# apps get the camera through PipeWire: hide the raw camsv V4L2 node, back camera default
 	install -Dm644 "$srcdir"/wireplumber-camera.conf "$pkgdir"/usr/share/wireplumber/wireplumber.conf.d/90-lenovo-tabe7-camera.conf
 	install -Dm755 "$srcdir"/battery-gauge-state.initd "$pkgdir"/etc/init.d/battery-gauge-state
+	# the package build time is the oldest valid clock (lost RTC comes back in 2069)
+	install -Dm755 "$srcdir"/clock-sanity.initd "$pkgdir"/etc/init.d/clock-sanity
+	sed -i "s/@BUILD@/${SOURCE_DATE_EPOCH:-$(date +%s)}/" "$pkgdir"/etc/init.d/clock-sanity
+	install -Dm755 "$srcdir"/apk-cache-clean.start "$pkgdir"/etc/local.d/apk-cache-clean.start
 	# USB role switch for host mode (no VBUS boost: powered OTG cable/hub only)
 	install -Dm755 "$srcdir"/usb-host-mode "$pkgdir"/usr/bin/usb-host-mode
 	install -Dm644 "$srcdir"/usb-host-mode.desktop \
@@ -152,8 +158,10 @@ a6e6f989c8732100f16e77b3d7a0f8514142a3dd3ad5d96e68e14b4f3c10eee3bec8867f1a6d5849
 5c14471754dc8f76a3e7eb023b4171fb309325ad6ff7430cd49bc61f8fbb021d11debe72a7abb80e06bbf8f0726797a1bbbef893186c2a116c7f2b967af39767  charge-mode.initd
 1af76df2f654a81e32d3bee2a354630231fafffd588c7f2edc832ae183e378fae3b865c5da2232c78997f366b16f4c83eaf78041eba54ce39ecb6e449550d588  backlight-follow-dpms
 fd2bdd4160d22da5557de1c5e40742548d44617741bcddba1935461923db69098cab85e291c54863d062012f61267afcbdaf3af64eb99bc693b08b5b93c4850f  backlight-follow-dpms.initd
-0045c1efc13ea8e65c1913fc6a9f5fc048ceb8660a34936832b4190806b3a78984c9eea03306027170a0b0d8c0ecb26e1b84fb1bfc6efc139c1ff7ad37d0b3eb  mtk-wifi.initd
+cdd3f430e2c7ed5b06978c7a5e3f5b5a59c6e2c4bd36f7f85e56bee75d61ef97b0c63cfbb8ce67d30a3f1e8b366b832483c6a1042555f8724cc17b8c6fa7ddf9  mtk-wifi.initd
 57ca8c252d367e60d55cc298194541743d60109be8a83cf0724a81df09932cb45baf1200b922cf86d889704bb5dfcefc59bac922ee78cf3433b619a62ec408dd  battery-gauge-state.initd
+fa56bf2d918e0c9fe60034d77210a5a778245263eef082016cbe99c8f35a7a2ea851f2ed9f839d432a93c4fb3f5cc5b50ce1b551a8262746e693621a4972297e  clock-sanity.initd
+62b190132b595ed9bdaf7d19235999bd58336d2cd5a82886295e8edd161aaa4218c7b12f61942827dc9b127e9f830462e10cbfba686cf09a36077b8212a286e4  apk-cache-clean.start
 cf812d9c70fa6aee298ec639b65c3a9ab2508ad019562824c978616922330fb00b1fa349a6e6ba3f30d657956c1a105976aeef3e53208cee61184b4e401d81f6  upower-lenovo-tabe7.conf
 57abab316dbb50dab24def34bbf1ea7f975c33e7f0324bd625c84a60032fa51b17cac0057276f1d72112a43643599bbd3d02381c0e7f70345af588edc21d6f1a  usb-host-mode
 2c45841222910f02369e334f8d116fe075ca63664dfeb2ae2938b470bd1792a1ce50e4018410b7601d4aaaf2af8d5b078140ddaecb270c1b806e468a777f87b2  usb-host-mode.desktop

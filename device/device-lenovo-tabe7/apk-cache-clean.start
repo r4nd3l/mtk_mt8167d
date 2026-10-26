@@ -1,0 +1,4 @@
+#!/bin/sh
+# apk keeps every downloaded package in /var/cache/apk; on the 4.6 GB root fs
+# that reached 1 GB. Keep the indexes, drop the packages.
+rm -f /var/cache/apk/*.apk

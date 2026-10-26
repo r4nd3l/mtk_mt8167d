@@ -1,0 +1,33 @@
+#!/sbin/openrc-run
+# The MT6392 RTC loses its time when the battery runs flat and comes back in
+# 2069. Future file dates then break OpenRC's dependency cache. If the clock
+# is before the last known good time or more than a year past it, set it to
+# that time; chronyd steps it to the real time once the network is up.
+# ponytail: a year without a boot looks like a broken RTC too, NTP fixes it.
+description="Fix a lost RTC time"
+STAMP=/var/lib/misc/clock-stamp
+BUILD=@BUILD@
+
+depend() {
+	need localmount
+	after hwclock
+	before bootmisc logbookd
+}
+
+start() {
+	ebegin "Checking the system clock"
+	ref=$(stat -c %Y "$STAMP" 2>/dev/null || echo 0)
+	# a stamp written while the clock was wrong is no reference either
+	[ "$ref" -lt "$BUILD" ] || [ "$ref" -gt $((BUILD + 10 * 31536000)) ] && ref=$BUILD
+	now=$(date +%s)
+	if [ "$now" -lt "$ref" ] || [ "$now" -gt $((ref + 31536000)) ]; then
+		ewarn "clock was $(date), setting it to $(date -d @"$ref")"
+		date -s @"$ref" >/dev/null && hwclock -w -u
+	fi
+	mkdir -p "${STAMP%/*}" && touch "$STAMP"
+	eend 0
+}
+
+stop() {
+	touch "$STAMP"
+}

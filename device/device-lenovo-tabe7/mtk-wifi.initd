@@ -46,18 +46,29 @@ start() {
 	/usr/bin/mtinit || { eend 1 "mtinit failed"; return 1; }
 	start-stop-daemon --start --background --make-pidfile --pidfile "$pidfile" \
 		--exec /usr/bin/mtdaemon
+	# Waiting for the WMT core took ~9 s and held up the whole boot. Do it in
+	# the background: NetworkManager picks wlan0 up whenever it appears.
+	wifi_on </dev/null >/dev/null 2>&1 &
+	eend 0
+}
+
+wifi_on() {
 	# the Wi-Fi char device appears once the WMT core is up
 	i=0
 	while [ ! -e /dev/wmtWifi ] && [ $i -lt 20 ]; do sleep 0.5; i=$((i + 1)); done
-	[ -e /dev/wmtWifi ] || { eend 1 "/dev/wmtWifi did not appear"; return 1; }
+	[ -e /dev/wmtWifi ] || { logger -t mtk-wifi "/dev/wmtWifi did not appear"; return 1; }
 	# right after mtinit the WMT core may still refuse with EIO; retry
 	i=0
 	until echo 1 2>/dev/null > /dev/wmtWifi; do
 		i=$((i + 1))
-		[ $i -ge 10 ] && { eend 1 "turning Wi-Fi on failed"; return 1; }
+		[ $i -ge 10 ] && { logger -t mtk-wifi "turning Wi-Fi on failed"; return 1; }
 		sleep 1
 	done
-	eend 0
+	# INFO level logs a status line every 2 s and pushes the boot log out of
+	# logbookd; keep WARN and ERROR only
+	i=0
+	while [ ! -e /proc/net/wlan/dbgLevel ] && [ $i -lt 20 ]; do sleep 0.5; i=$((i + 1)); done
+	echo 0xFF:0x03 > /proc/net/wlan/dbgLevel
 }
 
 stop() {
