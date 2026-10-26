@@ -16,9 +16,15 @@ done
 [ -n "$KEYS" ] || exit 0
 
 echo "charge-mode: cable power-on, charging with the panel off" > /dev/kmsg
-echo 4 > "$BL"
+# A dark panel looked like a slow boot, so say what is going on first.
+# ASCII only: the fbcon font has no Hungarian accents.
+chvt 1 2>/dev/null
+printf '\033[2J\033[H\n\n  Charging: %s%%\n\n  Press the power key to start.\n' \
+	"$(cat /sys/class/power_supply/mt6392-battery/capacity 2>/dev/null)" > /dev/tty1
 # unplugged: power off (with no cable LK stays off)
 (
+	sleep 8
+	echo 4 > "$BL"
 	while sleep 2; do
 		[ "$(cat "$ONLINE" 2>/dev/null)" = 1 ] && continue
 		echo "charge-mode: charger unplugged, powering off" > /dev/kmsg
