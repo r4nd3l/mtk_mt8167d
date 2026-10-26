@@ -79,6 +79,7 @@
 #define MT6392_VBAT_OV_EN	BIT(0)
 #define MT6392_VBAT_OV_VTH	GENMASK(3, 1)
 #define MT6392_VBAT_OV_VTH_4V3	0x1
+#define MT6392_VBAT_OV_VTH_4V4	0x2
 /* CHR_CON7 */
 #define MT6392_BATON_EN		BIT(0)
 #define MT6392_BATON_HT_EN	BIT(1)
@@ -285,6 +286,10 @@ static int mt6392_charger_hw_init(struct mt6392_charger *chg)
 		if (ret)
 			return ret;
 	}
+	/* the vendor raises the OV trip to 4.4 V for 4.35 V cells */
+	if (chg->cv_uv > 4300000)
+		return regmap_update_bits(chg->regmap, MT6392_CHR_CON6, MT6392_VBAT_OV_VTH,
+					  FIELD_PREP(MT6392_VBAT_OV_VTH, MT6392_VBAT_OV_VTH_4V4));
 	return 0;
 }
 
@@ -963,9 +968,6 @@ static int mt6392_charger_probe(struct platform_device *pdev)
 	chg->cv_uv = 4200000;
 	chg->cc_ua = MT6392_CC_MAX_UA;
 
-	ret = mt6392_charger_hw_init(chg);
-	if (ret)
-		return dev_err_probe(&pdev->dev, ret, "charger block init failed\n");
 	device_property_read_u32(&pdev->dev, "constant-charge-voltage-max-microvolt",
 				 &chg->cv_uv);
 	device_property_read_u32(&pdev->dev, "constant-charge-current-max-microamp",
@@ -975,6 +977,11 @@ static int mt6392_charger_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "refusing CV above 4.35 V (%u uV)\n", chg->cv_uv);
 		return -EINVAL;
 	}
+
+	/* after the DT read: the OV trip depends on the CV */
+	ret = mt6392_charger_hw_init(chg);
+	if (ret)
+		return dev_err_probe(&pdev->dev, ret, "charger block init failed\n");
 
 	INIT_DELAYED_WORK(&chg->wdt_work, mt6392_charger_wdt_work);
 	platform_set_drvdata(pdev, chg);

@@ -73,7 +73,13 @@ wifi_on() {
 
 stop() {
 	ebegin "Stopping MediaTek connsys"
-	[ -e /dev/wmtWifi ] && echo 0 > /dev/wmtWifi
+	# after a driver oops this write never returns and held up the reboot
+	# (10-20): give it 5 s, then go on without it
+	if [ -e /dev/wmtWifi ]; then
+		echo 0 > /dev/wmtWifi &
+		i=0
+		while kill -0 $! 2>/dev/null && [ $i -lt 10 ]; do sleep 0.5; i=$((i + 1)); done
+	fi
 	start-stop-daemon --stop --pidfile "$pidfile" --exec /usr/bin/mtdaemon
 	eend 0
 }

@@ -1,0 +1,17 @@
+diff --git a/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts b/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
+index 140ef53..9a090f3 100644
+--- a/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
++++ b/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
+@@ -625,6 +625,12 @@ &keypad {
+ &pmic {
+ 	interrupt-parent = <&pio>;
+ 	interrupts = <28 IRQ_TYPE_LEVEL_HIGH>;
++	/*
++	 * 4.35 V cell: the vendor p98995 battery setting has
++	 * high_battery_voltage_support = <1> and its OCV table starts at
++	 * 4.379 V. Read by the mt6392-charger cell.
++	 */
++	constant-charge-voltage-max-microvolt = <4350000>;
+ };
+ 
+ &uart0 {
