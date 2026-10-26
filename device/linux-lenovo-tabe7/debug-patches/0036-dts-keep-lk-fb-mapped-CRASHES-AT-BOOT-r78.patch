@@ -1,0 +1,31 @@
+diff --git a/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts b/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
+index 4cb75c9d9..42be5db72 100644
+--- a/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
++++ b/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
+@@ -67,6 +67,18 @@ ramoops@54410000 {
+ 			no-map;
+ 		};
+ 
++		/*
++		 * LK leaves OVL0 scanning out two 1024x600 ARGB layers: L0 at
++		 * 0x7edc0000 and L3 at 0x7f020000 (the simple-framebuffer). Once
++		 * ovl0 sits behind the M4U every read of them faults, and the fault
++		 * interrupt storm hard-locks CPU0 before mediatek-drm can take over.
++		 * Keep them mapped 1:1 for ovl0 until then.
++		 */
++		lk_fb: framebuffer@7edc0000 {
++			reg = <0x0 0x7edc0000 0x0 0x4b8000>;
++			iommu-addresses = <&ovl0 0x0 0x7edc0000 0x0 0x4b8000>;
++		};
++
+ 		atf-reserved-memory {
+ 			no-map;
+ 			reg = <0x00 0x54600000 0x0 0x30000>;
+@@ -214,6 +226,7 @@ &cpu3 {
+  * the LK-initialised panel by default.
+  */
+ &mmsys { status = "okay"; };
++&ovl0 { memory-region = <&lk_fb>; };
+ &wdma {	status = "disabled"; };
+ 
+ &disp_pwm {

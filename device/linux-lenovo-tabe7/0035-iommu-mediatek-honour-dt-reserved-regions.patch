@@ -1,0 +1,72 @@
+diff --git a/drivers/iommu/mtk_iommu.c b/drivers/iommu/mtk_iommu.c
+index fb61ae077..afc55a7cf 100644
+--- a/drivers/iommu/mtk_iommu.c
++++ b/drivers/iommu/mtk_iommu.c
+@@ -35,6 +35,8 @@
+ 
+ #include <dt-bindings/memory/mtk-memory-port.h>
+ 
++#include "dma-iommu.h"
++
+ #define REG_MMU_PT_BASE_ADDR			0x000
+ 
+ #define REG_MMU_INVALIDATE			0x020
+@@ -814,6 +816,14 @@ static int mtk_iommu_map(struct iommu_domain *domain, unsigned long iova,
+ {
+ 	struct mtk_iommu_domain *dom = to_mtk_domain(domain);
+ 
++	/*
++	 * The page table is set up at the first attach. A direct mapping for a
++	 * DT reserved region is tried before that: fail it, the core maps it
++	 * again right after the attach.
++	 */
++	if (!dom->bank)
++		return -ENODEV;
++
+ 	/* The "4GB mode" M4U physically can not use the lower remap of Dram. */
+ 	if (dom->bank->parent_data->enable_4GB)
+ 		paddr |= BIT_ULL(32);
+@@ -846,6 +856,8 @@ static void mtk_iommu_iotlb_sync(struct iommu_domain *domain,
+ 	struct mtk_iommu_domain *dom = to_mtk_domain(domain);
+ 	size_t length = gather->end - gather->start + 1;
+ 
++	if (!dom->bank)
++		return;
+ 	mtk_iommu_tlb_flush_range_sync(gather->start, length, dom->bank);
+ }
+ 
+@@ -854,7 +866,8 @@ static int mtk_iommu_sync_map(struct iommu_domain *domain, unsigned long iova,
+ {
+ 	struct mtk_iommu_domain *dom = to_mtk_domain(domain);
+ 
+-	mtk_iommu_tlb_flush_range_sync(iova, size, dom->bank);
++	if (dom->bank)
++		mtk_iommu_tlb_flush_range_sync(iova, size, dom->bank);
+ 	return 0;
+ }
+ 
+@@ -864,6 +877,10 @@ static phys_addr_t mtk_iommu_iova_to_phys(struct iommu_domain *domain,
+ 	struct mtk_iommu_domain *dom = to_mtk_domain(domain);
+ 	phys_addr_t pa;
+ 
++	/* nothing is mapped before the first attach sets up the page table */
++	if (!dom->iop)
++		return 0;
++
+ 	pa = dom->iop->iova_to_phys(dom->iop, iova);
+ 	if (IS_ENABLED(CONFIG_PHYS_ADDR_T_64BIT) &&
+ 	    dom->bank->parent_data->enable_4GB &&
+@@ -1033,6 +1050,13 @@ static void mtk_iommu_get_resv_regions(struct device *dev,
+ 	struct iommu_resv_region *region;
+ 	int prot = IOMMU_WRITE | IOMMU_READ;
+ 
++	/*
++	 * DT reserved-memory with iommu-addresses, e.g. the framebuffer the
++	 * bootloader left the display scanning out: without a direct mapping
++	 * every read faults once the master is attached to the DMA domain.
++	 */
++	iommu_dma_get_resv_regions(dev, head);
++
+ 	if ((int)regionid < 0)
+ 		return;
+ 	curdom = data->plat_data->iova_region + regionid;

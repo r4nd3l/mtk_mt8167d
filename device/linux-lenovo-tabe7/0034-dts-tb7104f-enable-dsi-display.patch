@@ -1,0 +1,41 @@
+diff --git a/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts b/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
+index 9a090f376..4cb75c9d9 100644
+--- a/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
++++ b/arch/arm64/boot/dts/mediatek/mt8167-lenovo-tb7104f.dts
+@@ -208,29 +208,25 @@ &cpu3 {
+ };
+ 
+ /*
+- * mmsys stays enabled for its clock provider only: disp_pwm needs
+- * CLK_MM_DISP_PWM_26M/MM and the MM power domain. The display pipeline
+- * (ovl0, rdma0, dsi, mipi_tx) stays disabled so mediatek-drm never binds
+- * and simpledrm keeps the LK-initialised panel.
++ * Display: OVL0 -> COLOR -> CCORR -> AAL -> GAMMA -> DITHER -> RDMA0 -> DSI0
++ * -> EK79007 panel. mediatek-drm, the DSI PHY and the panel driver are
++ * modules and blacklisted until the pipeline is proven, so simpledrm keeps
++ * the LK-initialised panel by default.
+  */
+ &mmsys { status = "okay"; };
+-&ovl0 { status = "disabled"; };
+-&rdma0 { status = "disabled"; };
+ &wdma {	status = "disabled"; };
+-&ccorr { status = "disabled"; };
+-&aal { status = "disabled"; };
+-&gamma { status = "disabled"; };
+-&dither { status = "disabled"; };
+ 
+ &disp_pwm {
+ 	status = "okay";
+ };
+ 
+ &mipi_tx {
+-	//status = "okay";
++	status = "okay";
+ };
+ 
+ &dsi {
++	status = "okay";
++
+ 	panel: panel@0 {
+ 		compatible = "lenovo,tb7104f-panel";
+ 		reg = <0>;
