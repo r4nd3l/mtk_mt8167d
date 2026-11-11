@@ -82,31 +82,38 @@ Working:
   scanned every 7-8 s and this firmware drops the link on online scans
 - Phosh with a patched phrog greeter (first PIN attempt no longer fails)
 
-- GPU, first light: the PowerVR GE8300 (BVNC 22.40.54.30, MIPS firmware,
-  32-bit physical bus) runs Imagination's 22.68.54.30 firmware under mainline
-  `drm/imagination` and executes jobs from Mesa's open Vulkan driver. Three
-  pieces were missing, all reverse engineered from the vendor DDK 1.9 and its
-  firmware (`device/mesa-pvr-tabe7/NOTES-*.md`):
+- GPU: the PowerVR GE8300 (BVNC 22.40.54.30, MIPS firmware, 32-bit physical
+  bus) runs Imagination's 22.68.54.30 firmware under mainline
+  `drm/imagination` with Mesa's open Vulkan driver. vkmark runs clean and
+  GTK4 apps render with GSK Vulkan by default (`gpu-ui on|off`). What was
+  missing, reverse engineered from the vendor DDK 1.9 and its firmware
+  (`device/mesa-pvr-tabe7/NOTES-*.md`):
   - kernel 0028: on a 32-bit bus the MIPS wrapper register bank address is
     the physical GPU register base (mainline refused such cores outright)
   - kernel 0029: BRN 65273, the firmware's TE region header initialiser
-    touches fixed addresses 0xF800000000 / 0xF900000000 after init, so every
-    VM context maps a page there (`brn65273` module parameter)
-  - Mesa (`device/mesa-pvr-tabe7`): the transfer queue's ISP control stream
-    and vertex format word for simple internal parameter format **v1**,
-    which upstream Mesa lacks (it only has classic and v2)
-  `scripts/vkclear.c` (clear an image on the GPU, read it back) passes.
-  Nothing is on screen yet: the compositor renders with pixman on simpledrm
-  and cannot import GPU buffers, so mediatek-drm (DSI) is the next step.
+    touches fixed addresses 0xF800000000 / 0xF900000000, so every VM
+    context maps a page there (`brn65273` module parameter)
+  - firmware: the open 22.68 firmware writes a fixed 0x10000 to
+    CR_ISP_PIXEL_BASE for FAST_2D transfers; `device-lenovo-tabe7` patches
+    it to the transfer heap base at install time
+  - Mesa (`device/mesa-pvr-tabe7`): simple internal parameter format **v1**
+    (upstream only has classic and v2), PPP clip in 16 px blocks,
+    ISP_BGOBJDEPTH always F32, and CPU-written buffers bypass the GPU SLC
+    (the SoC is not coherent and the kernel never flushes it). Also shader
+    compiler fixes that make opaque fills about 10x faster.
+  Presenting still goes through a CPU copy (`MESA_VK_WSI_DEBUG=sw`), because
+  the compositor runs pixman on simpledrm. GPU tests: `tools/gpu-tests/`.
   `device/mesa-clc` builds the native `mesa_clc`/`pco_clc` tools that a
   cross build of the Imagination driver needs.
 
 Not yet:
 
-- GPU on screen: needs the mediatek-drm DSI path (phoc runs pixman on
-  simpledrm), then zink for GL or a Vulkan-native UI
-- mediatek-drm instead of simpledrm (DSI comes up only about half the time
-  on MT8167, per Luca)
+- GPU buffers on screen without a CPU copy: needs mediatek-drm
+- mediatek-drm (work in progress, modules blacklisted by default): the
+  EK79007 panel driver (`panel-lenovo-tb7104f.c`, reset is GPIO66) binds and
+  modesets, but DSI LP commands time out and CPU0 locks up shortly after.
+  ovl0 behind the M4U also keeps reading LK's framebuffer layers; patch 0035
+  guards mtk_iommu against direct mappings before the first attach
 - Front camera (GC030A): the sensor streams but the receiver sees nothing,
   it sits on the other CSI port and that routing is not found yet (its
   PipeWire node is hidden until then)
